@@ -1,20 +1,46 @@
-title	"flasher"	
+title	"Memory_Game"	
 list	p=16f84A
 include "p16f84A.inc"
 
 
-		c1	EQU	d'11'
+		c1		EQU	d'11'
 		COUNT1	EQU	d'12'
 		COUNT2	EQU	d'13'
+		Menu	EQU	d'14'
+		Mode1	EQU	d'15'
+		Mode2	EQU	d'16'
+		Mode3	EQU	d'17'
+		
 
 		ORG		0x0
+		GOTO 	MAIN
+
+		org 0x04
+
+		;RB47 Interrupt
+
+
+MAIN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;; OUTPUTS AND INPUTS ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 		CLRF	PORTA
 		BSF		STATUS,RP0
+		MOVLW	b'10000111'
+		MOVWF	OPTION_REG
 		CLRF	TRISA
 		CLRF	TRISB
 		BCF		STATUS,RP0
+		BSF		INTCON,INTE
+		BSF		INTCON,GIE
 
-	
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;; INITIALIZATION SEQUENCE ;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+		;FUNCTION SET	
 		CALL	DELAY2
 		MOVLW	b'00010'
 		MOVWF	PORTA
@@ -24,7 +50,8 @@ include "p16f84A.inc"
 		MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
-
+		
+		;DISPLAY ON/OFF
 		MOVLW	b'00000'
 		MOVWF	PORTA
 		CALL	ET
@@ -32,21 +59,24 @@ include "p16f84A.inc"
 		MOVWF	PORTA
 		CALL	ET
 
-		MOVLW	b'00000'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'00001'
-		MOVWF	PORTA
-		CALL	ET
+		;CLEAR DISPLAY
+		CALL	Clear_Display
 
+		;ENTRY MODE SET
 		MOVLW	b'00000'
 		MOVWF	PORTA
 		CALL	ET
 		MOVLW	b'00110'
 		MOVWF	PORTA
-		CALL	ET  ; end of int
+		CALL	ET  
 
-WELCOME	;SET ADDRESS
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;; IMPLMENETATION ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+MEMORY_GAME	
+		;SET ADDRESS
 		MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
@@ -55,36 +85,16 @@ WELCOME	;SET ADDRESS
 		CALL	ET
 
 		;M
-		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'11101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Letter_M
 
 		;E
-		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'10101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Letter_E
 
 		;M
-		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'11101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Letter_M
 
 		;O
-		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'11111'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Letter_O
 
 		;R
 		MOVLW	b'10101'
@@ -102,14 +112,6 @@ WELCOME	;SET ADDRESS
 		MOVWF	PORTA
 		CALL	ET
 
-		;blank space
-		MOVLW	b'11010'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'10000'
-		MOVWF	PORTA
-		CALL	ET
-		
 		;blank space
 		MOVLW	b'11010'
 		MOVWF	PORTA
@@ -135,67 +137,102 @@ WELCOME	;SET ADDRESS
 		CALL	ET
 
 		;M
-		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'11101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Letter_M
 
 		;E
-		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'10101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Letter_E
 		
 		;delaying the welcome message for about 2.5 seconds
 		MOVLW	d'50'
 		MOVWF	c1
-
-L		CALL	DELAY2
+Label	CALL	DELAY2
 		DECFSZ	c1,f
-		GOTO L
+		GOTO Label
 		
+		;CLEAR DISPLAY
+		CALL	Clear_Display
+
+		;SET ADDRESS
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'00000'
+		MOVWF	PORTA
+		CALL	ET
+		
+		BSF	Menu,0
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;; COMMONLY USED FUNCTIONS IN CODE ;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Clear_Display
 		MOVLW	b'00000'
 		MOVWF	PORTA
 		CALL	ET
 		MOVLW	b'00001'
 		MOVWF	PORTA
 		CALL	ET
-		
-InfLoop		GOTO	InfLoop
-
-DELAY	MOVLW	h'00'
-		MOVWF	COUNT1
-		MOVLW	d'13'
-		MOVWF	COUNT2
-		
-LOOP	INCFSZ	COUNT1,F
-		GOTO	LOOP
-		DECFSZ	COUNT2,F
-		GOTO 	LOOP
 		RETURN
 
-DELAY2	MOVLW	h'00'
-		MOVWF	COUNT1
-		MOVLW	d'52'
-		MOVWF	COUNT2
-		
-LOOP2	INCFSZ	COUNT1,F
-		GOTO	LOOP2
-		DECFSZ	COUNT2,F
-		GOTO 	LOOP2
+Letter_O
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'11111'
+		MOVWF	PORTA
+		CALL	ET
 		RETURN
 
+Letter_M 
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'11101'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Letter_E
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+;TOGGLE
 ET		BSF		PORTB,1
 		NOP
 		BCF		PORTB,1
 		Call	DELAY
 		RETURN
 
-		end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; DELAYS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;Very short delay
+DELAY	MOVLW	h'00'
+		MOVWF	COUNT1
+		MOVLW	d'10'
+		MOVWF	COUNT2
+LOOP	INCFSZ	COUNT1,F
+		GOTO	LOOP
+		DECFSZ	COUNT2,F
+		GOTO 	LOOP
+		RETURN
 
-		
+;40 MS DELAY
+DELAY2	MOVLW	h'00'
+		MOVWF	COUNT1
+		MOVLW	d'52'
+		MOVWF	COUNT2
+LOOP2	INCFSZ	COUNT1,F
+		GOTO	LOOP2
+		DECFSZ	COUNT2,F
+		GOTO 	LOOP2
+		RETURN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+end
