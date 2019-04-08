@@ -1,45 +1,21 @@
-		title	"Memory_Game"	
-		list	p=16f84A
-		include "p16f84A.inc"
+title	"flasher"	
+list	p=16f84A
+include "p16f84A.inc"
 
 
-c1		EQU	d'12'
-COUNT1	EQU	d'13'
-COUNT2	EQU	d'14'
+		c1	EQU	d'11'
+		COUNT1	EQU	d'12'
+		COUNT2	EQU	d'13'
 
-Acard	EQU	d'15'
-Bcard	EQU	d'16'
-Ccard	EQU	d'17'
-Dcard	EQU	d'18'
-Ecard	EQU	d'19'
-Fcard	EQU	d'20'
-		
-
-		org	0x0
-		GOTO MAIN
-
-
-
-MAIN	BSF		STATUS,RP0
-		MOVLW	b'10000111'
-		MOVWF	OPTION_REG
-		CLRF	TRISA	;Setting PORTA as outputs
-		MOVLW	b'00001111'
-		MOVWF	TRISB	;PORTB pins
+		ORG		0x0
+		CLRF	PORTA
+		BSF		STATUS,RP0
+		CLRF	TRISA
+		CLRF	TRISB
 		BCF		STATUS,RP0
-		CLRF	INTCON
-		CLRF	TMR0
-		MOVLW	d'16'
-		MOVFW	COUNT1
-		BSF		INTCON,INTE
-		BSF		INTCON,T0IE
-		BSF		INTCON,GIE
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
 
-
-		
-INITIALIZE ;initializing LCD
-		CALL	DELAY
+	
+		CALL	DELAY2
 		MOVLW	b'00010'
 		MOVWF	PORTA
 		CALL	ET
@@ -68,14 +44,13 @@ INITIALIZE ;initializing LCD
 		CALL	ET
 		MOVLW	b'00110'
 		MOVWF	PORTA
-		CALL	ET  
-; end of initialization
+		CALL	ET  ; end of int
 
 WELCOME	;SET ADDRESS
 		MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
-		MOVLW	b'00111'
+		MOVLW	b'00010'
 		MOVWF	PORTA
 		CALL	ET
 
@@ -176,46 +151,49 @@ WELCOME	;SET ADDRESS
 		CALL	ET
 		
 		;delaying the welcome message for about 2.5 seconds
-		MOVLW	d'0'
+		MOVLW	d'50'
 		MOVWF	c1
-DEL		CALL DELAY2
-		INCFSZ	c1,F
-		GOTO DEL
-			
 
-; 40 msec delay
+L		CALL	DELAY2
+		DECFSZ	c1,f
+		GOTO L
+		
+		MOVLW	b'00000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'00001'
+		MOVWF	PORTA
+		CALL	ET
+		
+InfLoop		GOTO	InfLoop
+
 DELAY	MOVLW	h'00'
 		MOVWF	COUNT1
-		MOVLW	d'52'
+		MOVLW	d'13'
 		MOVWF	COUNT2
+		
 LOOP	INCFSZ	COUNT1,F
 		GOTO	LOOP
 		DECFSZ	COUNT2,F
 		GOTO 	LOOP
 		RETURN
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-;10 msec delay
 DELAY2	MOVLW	h'00'
 		MOVWF	COUNT1
-		MOVLW	d'13'
+		MOVLW	d'52'
 		MOVWF	COUNT2
+		
 LOOP2	INCFSZ	COUNT1,F
 		GOTO	LOOP2
 		DECFSZ	COUNT2,F
 		GOTO 	LOOP2
 		RETURN
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-;toggle
 ET		BSF		PORTB,1
 		NOP
 		BCF		PORTB,1
-		Call	DELAY2
+		Call	DELAY
 		RETURN
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 		end
 
