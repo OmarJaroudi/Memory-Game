@@ -3,38 +3,41 @@ list	p=16f84A
 include "p16f84A.inc"
 
 
-		c1		EQU	d'11'
-		COUNT1	EQU	d'12'
-		COUNT2	EQU	d'13'
-		Menu	EQU	d'14'
-		Mode1	EQU	d'15'
-		Mode2	EQU	d'16'
-		Mode3	EQU	d'17'
-		
+		c1		EQU	d'12'
+		COUNT1	EQU	d'13'
+		COUNT2	EQU	d'14'
+		SCENE	EQU	d'15'		
+		;"Scene" flag is used to indicate which scene we are in
+		;there are 4 scenes (Main menu, Mode1,Mode2,Mode3)
+		;so we can use 4 bits (1000 = Main menu,0100 = Mode1 etc.)
+		;when any of the 4 bits is set to 1, the others are 0
 
+		AC		EQU	d'16'	;indicates address of LCD
+		temp	EQU	d'17'
+		temp1	EQU	d'18'
+		temp2	EQU	d'19'
 		ORG		0x0
 		GOTO 	MAIN
 
-		org 0x04
-
-		;RB47 Interrupt
-
-
-MAIN
+		ORG		0x04
+		BTFSC	INTCON,RBIF
+		GOTO	RBINT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;; OUTPUTS AND INPUTS ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-		CLRF	PORTA
+MAIN	CLRF	SCENE
 		BSF		STATUS,RP0
 		MOVLW	b'10000111'
 		MOVWF	OPTION_REG
 		CLRF	TRISA
-		CLRF	TRISB
+		MOVLW	b'11110000'
+		MOVWF	TRISB
 		BCF		STATUS,RP0
-		BSF		INTCON,INTE
+		CLRF	INTCON
 		BSF		INTCON,GIE
-
+		BSF		INTCON,RBIE
+		CLRF	PORTA
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;; INITIALIZATION SEQUENCE ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -113,12 +116,7 @@ MEMORY_GAME
 		CALL	ET
 
 		;blank space
-		MOVLW	b'11010'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'10000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Blank_Space
 
 		;G
 		MOVLW	b'10100'
@@ -149,6 +147,8 @@ Label	CALL	DELAY2
 		DECFSZ	c1,f
 		GOTO Label
 		
+		
+MAIN_MENU
 		;CLEAR DISPLAY
 		CALL	Clear_Display
 
@@ -160,7 +160,85 @@ Label	CALL	DELAY2
 		MOVWF	PORTA
 		CALL	ET
 		
-		BSF	Menu,0
+		MOVLW	b'1000'
+		MOVWF	SCENE	; we are in the "main menu" scene
+		MOVLW	d'6'
+		MOVWF	AC
+
+		;M
+		CALL	Letter_M
+		;O
+		CALL	Letter_O
+		;D
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		;E
+		CALL	Letter_E
+
+		;blank space
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+
+		;1
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10001'
+		MOVWF	PORTA
+		CALL	ET
+	
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+		;2
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10010'
+		MOVWF	PORTA
+		CALL	ET
+
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+		;3
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		
+		;SET ADDRESS
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'00101'
+		MOVWF	PORTA
+		CALL	ET
+
+		;Asterisk cursor (*)
+		CALL	Asterisk
+
+InfLoop	BTFSC	SCENE,3
+		GOTO	InfLoop
+		BTFSC	SCENE,2
+		GOTO	MODE1
+		BTFSC	SCENE,1
+		GOTO	MODE2
+		BTFSC	SCENE,0
+		GOTO	MODE3
+		GOTO	InfLoop
+
+
+MODE1
+MODE2
+MODE3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;; COMMONLY USED FUNCTIONS IN CODE ;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -170,6 +248,24 @@ Clear_Display
 		MOVWF	PORTA
 		CALL	ET
 		MOVLW	b'00001'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Blank_Space
+		MOVLW	b'11010'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10000'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Asterisk
+		MOVLW	b'10010'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'11010'
 		MOVWF	PORTA
 		CALL	ET
 		RETURN
@@ -208,14 +304,37 @@ ET		BSF		PORTB,1
 		Call	DELAY
 		RETURN
 
+
+
+ARBITRARY
+		;Set Address
+		MOVF	temp,w
+		MOVWF 	PORTA
+		CALL  	ET
+		MOVF	temp1,w
+		MOVWF 	PORTA
+		CALL  	ET
+
+		CALL 	Blank_Space
+
+		;Set Address
+		MOVLW 	b'01000'
+		MOVWF 	PORTA
+		CALL 	ET
+		MOVF	temp2,w
+		MOVWF 	PORTA
+		CALL 	ET
+		
+		CALL 	Asterisk
+		RETURN		
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;; DELAYS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; DELAYS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;Very short delay
+;1.5 ms delay
 DELAY	MOVLW	h'00'
 		MOVWF	COUNT1
-		MOVLW	d'10'
+		MOVLW	d'2'
 		MOVWF	COUNT2
 LOOP	INCFSZ	COUNT1,F
 		GOTO	LOOP
@@ -233,6 +352,116 @@ LOOP2	INCFSZ	COUNT1,F
 		DECFSZ	COUNT2,F
 		GOTO 	LOOP2
 		RETURN
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INTERRUPTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+RBINT	CALL	DELAY
+		BTFSC	SCENE,3
+		GOTO	MENUINT
+		BTFSC	SCENE,2
+		GOTO	MODE1INT
+		BTFSC	SCENE,1
+		GOTO	MODE2INT
+		BTFSC	SCENE,0
+		GOTO	MODE3INT
+
+MENUINT	BTFSS	PORTB,7
+		GOTO	CHECK_MODE
+		BTFSS	PORTB,5
+		GOTO	MOVE_AST
+		GOTO	LEAVEINT1
+
+CHECK_MODE
+		MOVLW	d'4'
+		MOVWF	SCENE
+		MOVF AC,w
+		MOVWF c1
+		MOVLW d'6'
+		SUBWF c1
+		BTFSC STATUS,Z
+		GOTO LEAVEINT1
+
+  		MOVLW	d'2'
+		MOVWF	SCENE
+		MOVF AC,w
+		MOVWF c1
+		MOVLW d'9'
+		SUBWF c1
+		BTFSC STATUS,Z
+		GOTO LEAVEINT1
+
+  		MOVLW	d'1'
+		MOVWF	SCENE
+		GOTO LEAVEINT1
+		
+MOVE_AST	
+		MOVF AC,w
+		MOVWF c1
+		MOVLW d'12'
+		SUBWF c1
+		BTFSC STATUS,Z
+		GOTO AT_3
+
+		MOVF AC,w
+		MOVWF c1
+		MOVLW d'9'
+		SUBWF c1
+		BTFSC STATUS,Z
+		GOTO AT_2
+  
+		MOVF AC,w
+		MOVWF c1
+		MOVLW d'6'
+		SUBWF c1
+		BTFSC STATUS,Z
+		GOTO AT_1
+		GOTO LEAVEINT1
+
+
+AT_3	MOVLW d'6'
+		MOVWF AC
+		MOVLW	b'01001'
+		MOVWF	temp
+  		MOVLW	b'00010'
+		MOVWF	temp1
+		MOVLW	b'00110'
+		MOVWF	temp2
+		CALL	ARBITRARY
+
+		GOTO LEAVEINT1
+
+AT_2	MOVLW d'12'
+		MOVWF AC
+		MOVLW	b'01000'
+		MOVWF	temp
+  		MOVLW	b'01001'
+		MOVWF	temp1
+		MOVLW	b'01100'
+		MOVWF	temp2
+		CALL	ARBITRARY
+  
+		GOTO LEAVEINT1
+  
+AT_1	MOVLW d'9'
+		MOVWF AC
+ 		MOVLW	b'01000'
+		MOVWF	temp
+  		MOVLW	b'00110'
+		MOVWF	temp1
+		MOVLW	b'01001'
+		MOVWF	temp2
+		CALL	ARBITRARY
+		
+		GOTO LEAVEINT1
+  
+MODE1INT
+MODE2INT
+MODE3INT
+
+LEAVEINT1	BCF		INTCON,RBIF
+			RETFIE
+		
 end
