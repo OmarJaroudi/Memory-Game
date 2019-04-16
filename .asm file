@@ -18,7 +18,7 @@ include "p16f84A.inc"
 		tempB1	EQU	d'19'
 		tempB2	EQU	d'20'
 		COUNTER	EQU	d'21'
-		CARD	EQU	d'22'	;indicates if a card is already open or not
+		IsOpen	EQU	d'22'	;indicates if a card is already open or not
 		
 		;LETTERS
 		L1		EQU	d'23'
@@ -34,7 +34,25 @@ include "p16f84A.inc"
 		L11		EQU	d'33'
 		L12		EQU	d'34'
 
+		;Flags to tell whether each letter is currently open or not
+		S1		EQU	d'35'
+		S2		EQU	d'36'
+		S3		EQU	d'37'
+		S4		EQU	d'38'
+		S5		EQU	d'39'
+		S6		EQU	d'40'
+		S7		EQU	d'41'
+		S8		EQU	d'42'
+		S9		EQU	d'43'
+		S10		EQU	d'44'
+		S11		EQU	d'45'
+		S12		EQU	d'46'
 
+		RECENT	EQU	d'47'
+		RECENT@	EQU	d'48'
+		TEMP	EQU	d'49'
+		MATCH	EQU	d'50'
+		NOMATCH EQU d'51'
 		ORG		0x0
 		GOTO 	MAIN
 
@@ -46,27 +64,38 @@ include "p16f84A.inc"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 MAIN	
-		MOVLW	b'01000011'
+		CLRF	MATCH
+		CLRF	MISMATCH
+		MOVLW	b'0011'
 		MOVWF	L1
 		MOVWF	L10
-		MOVLW	b'01000001'
+		MOVLW	b'0001'
 		MOVWF	L2
 		MOVWF	L11
-		MOVLW	b'01000101'	
+		MOVLW	b'0101'	
 		MOVWF	L3
 		MOVWF	L12
-		MOVLW	b'01000110'
+		MOVLW	b'0110'
 		MOVWF	L4
 		MOVWF	L9
-		MOVLW	b'01000100'
+		MOVLW	b'0100'
 		MOVWF	L6
 		MOVWF	L8
-		MOVLW	b'01000010'
+		MOVLW	b'0010'
 		MOVWF	L5
 		MOVWF	L7
+		
+		MOVLW	d'35'
+		MOVWF	FSR
+		MOVLW	d'13'
+		MOVWF	COUNTER
+S		DECFSZ	COUNTER,F
+		GOTO	N
+		GOTO 	cont
+N		CLRF	INDF
+		GOTO 	S
 
-
-		CLRF	SCENE
+cont	CLRF	SCENE
 		CLRF	PORTB
 		BSF		STATUS,RP0
 		MOVLW	b'10000111'
@@ -194,12 +223,7 @@ MAIN_MENU
 		CALL	Clear_Display
 
 		;SET ADDRESS
-		MOVLW	b'01000'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'00000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Clear_Address
 		
 		MOVLW	b'1000'
 		MOVWF	SCENE	; we are in the "main menu" scene
@@ -278,6 +302,43 @@ InfLoop	BTFSC	SCENE,3
 
 
 MODE1	CALL	INITIAL_CARDS
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		
+		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+
+		MOVLW	d'7'
+		MOVWF	COUNTER
+		
+X		DECFSZ	COUNTER,F
+		GOTO 	AX
+		GOTO	AA
+AX		MOVLW	b'11010'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		GOTO	X
+
+AA		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10111'
+		MOVWF	PORTA
+		CALL	ET
+
+		CALL	Clear_Address
+		CLRF	AC
 Mode1_Loop
 		GOTO	Mode1_Loop
 
@@ -394,12 +455,7 @@ INITIAL_CARDS
 		
 		
 		;Set Address
-		MOVLW	b'01000'
-		MOVWF 	PORTA
-		CALL 	ET
-		MOVLW	b'00000'
-		MOVWF 	PORTA
-		CALL 	ET	
+		CALL	Clear_Address
 
 		CALL	UTILITY
 		
@@ -412,17 +468,6 @@ INITIAL_CARDS
 		CALL 	ET
 		
 		CALL	UTILITY
-		
-		;Set Address
-		MOVLW	b'01000'
-		MOVWF 	PORTA
-		CALL 	ET
-		MOVLW	b'00000'
-		MOVWF 	PORTA
-		CALL 	ET
-		
-
-		CLRF	AC
 
 		RETURN
 
@@ -499,11 +544,7 @@ UP_DOWN	MOVLW	b'01000'
 		CALL	ET
 		GOTO	DONE
 
-FLIP	BTFSS	CARD,0
-		GOTO	FIRST
-		GOTO	SECOND
-
-FIRST	MOVLW	d'23'
+FLIP	MOVLW	d'35'
 		MOVWF	FSR
 		MOVF	AC,w
 		MOVWF	c1
@@ -513,6 +554,41 @@ FIRST	MOVLW	d'23'
 		BCF		c1,7
 		MOVF	c1,w
 		ADDWF	FSR
+		BTFSC	INDF,0
+		GOTO	BUZZ
+		
+		
+		BTFSS	IsOpen,0
+		GOTO	FIRST
+		GOTO	SECOND
+
+FIRST	MOVF	AC,w
+		MOVWF	RECENT@
+		MOVLW	d'12'
+		SUBWF	FSR
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVF	INDF,w
+		MOVWF	RECENT
+		IORLW	b'10000'
+		MOVWF	PORTA
+		CALL	ET
+		
+		CALL	Clear_Address
+		CLRF	AC
+		
+		MOVLW	d'12'
+		ADDWF	FSR
+		MOVF	FSR,w
+		MOVWF	TEMP
+		BSF		INDF,0
+		BSF		IsOpen,0
+		GOTO	DONE
+		
+SECOND	BCF		IsOpen,0
+		MOVLW	d'12'
+		SUBWF	FSR
 		MOVLW	b'10100'
 		MOVWF	PORTA
 		CALL	ET
@@ -521,22 +597,84 @@ FIRST	MOVLW	d'23'
 		MOVWF	PORTA
 		CALL	ET
 		
+		MOVF	RECENT,w
+		SUBWF	INDF,0
+		BTFSS	STATUS,Z
+		GOTO	MISMATCH
+		MOVLW	d'12'
+		ADDWF	FSR
+		BSF		INDF,0
+		
+		CALL	Clear_Address
+		CLRF	AC
+		CLRF	RECENT
+		MOVLW	d'1'
+		ADDWF	MATCH
+		GOTO	BUZZ
+		
+MISMATCH
+		MOVF	TEMP,w
+		MOVWF	FSR
+		BCF		INDF,0
+		BSF		PORTB,2
+		CALL	DELAY4
+	
 		MOVLW	b'01000'
-		BTFSC	AC,7
-		ADDLW	b'100'
 		MOVWF	PORTA
+		MOVLW	b'100'
+		BTFSC	AC,7
+		ADDWF	PORTA
 		CALL	ET
 		MOVF	AC,w
 		MOVWF	PORTA
 		CALL	ET
 
-SECOND	GOTO	DONE
+		CALL	BOX	
+		
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		MOVLW	b'100'		
+		BTFSC	RECENT@,7
+		ADDWF	PORTA
+		CALL	ET
+		MOVF	RECENT@,w
+		MOVWF	PORTA
+		CALL	ET
+		
+		CALL	BOX
+		
+		MOVLW	d'35'
+		MOVWF	FSR
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW	d'6'
+		BTFSC	c1,7
+		ADDWF	c1
+		BCF		c1,7
+		MOVF	c1,w
+		ADDWF	FSR
+		BCF		INDF,0
+		
+		CALL	Clear_Address
+		CLRF	AC
+		BCF		PORTB,2
+		GOTO	DONE
 
 BUZZ	BSF		PORTB,0
 		CALL	DELAY3
 		BCF		PORTB,0
+
 DONE	RETURN
 
+
+Clear_Address
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'00000'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; DELAYS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -573,6 +711,21 @@ LOOP3	INCFSZ	COUNT1,F
 		GOTO 	LOOP3
 		RETURN
 
+DELAY4	MOVLW	h'00'
+		MOVWF	COUNT1
+		MOVLW	d'255'
+		MOVWF	COUNT2
+		MOVLW	d'10'
+		MOVWF	COUNTER
+LOOP4	INCFSZ	COUNT1,F
+		GOTO	LOOP4
+		DECFSZ	COUNT2,F
+		GOTO 	LOOP4
+		DECFSZ	COUNTER,F
+		GOTO 	LOOP4
+		RETURN
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INTERRUPTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -596,52 +749,52 @@ MENUINT	BTFSS	PORTB,7
 CHECK_MODE
 		MOVLW	d'4'
 		MOVWF	SCENE
-		MOVF AC,w
-		MOVWF c1
-		MOVLW d'6'
-		SUBWF c1
-		BTFSC STATUS,Z
-		GOTO LEAVEINT1
+		MOVF 	AC,w
+		MOVWF 	c1
+		MOVLW 	d'6'
+		SUBWF 	c1
+		BTFSC 	STATUS,Z
+		GOTO 	LEAVEINT1
 
   		MOVLW	d'2'
 		MOVWF	SCENE
-		MOVF AC,w
-		MOVWF c1
-		MOVLW d'9'
-		SUBWF c1
-		BTFSC STATUS,Z
-		GOTO LEAVEINT1
+		MOVF 	AC,w
+		MOVWF	c1
+		MOVLW	d'9'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO 	LEAVEINT1
 
   		MOVLW	d'1'
 		MOVWF	SCENE
-		GOTO LEAVEINT1
+		GOTO 	LEAVEINT1
 		
 MOVE_AST	
-		MOVF AC,w
-		MOVWF c1
-		MOVLW d'12'
-		SUBWF c1
-		BTFSC STATUS,Z
-		GOTO AT_3
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW 	d'12'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	AT_3
 
-		MOVF AC,w
-		MOVWF c1
-		MOVLW d'9'
-		SUBWF c1
-		BTFSC STATUS,Z
-		GOTO AT_2
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW	d'9'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	AT_2
   
-		MOVF AC,w
-		MOVWF c1
-		MOVLW d'6'
-		SUBWF c1
-		BTFSC STATUS,Z
-		GOTO AT_1
-		GOTO LEAVEINT1
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW	d'6'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	AT_1
+		GOTO	LEAVEINT1
 
 
-AT_3	MOVLW d'6'
-		MOVWF AC
+AT_3	MOVLW	d'6'
+		MOVWF	AC
 		MOVLW	b'01000'
 		MOVWF	tempA1
   		MOVLW	b'01011'
@@ -652,10 +805,10 @@ AT_3	MOVLW d'6'
 		MOVWF	tempB2
 		CALL	SET_AST
 
-		GOTO LEAVEINT1
+		GOTO	LEAVEINT1
 
-AT_2	MOVLW d'12'
-		MOVWF AC
+AT_2	MOVLW	d'12'
+		MOVWF	AC
 		MOVLW	b'01000'
 		MOVWF	tempA1
   		MOVLW	b'01000'
@@ -666,10 +819,10 @@ AT_2	MOVLW d'12'
 		MOVWF	tempB2
 		CALL	SET_AST
   
-		GOTO LEAVEINT1
+		GOTO	LEAVEINT1
   
-AT_1	MOVLW d'9'
-		MOVWF AC
+AT_1	MOVLW	d'9'
+		MOVWF	AC
  		MOVLW	b'01000'
 		MOVWF	tempA1
   		MOVLW	b'00101'
@@ -688,7 +841,7 @@ MODE1INT
 MODE2INT
 MODE3INT
 
-LEAVEINT1	BCF		INTCON,RBIF
+LEAVEINT1	BCF	INTCON,RBIF
 			RETFIE
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
