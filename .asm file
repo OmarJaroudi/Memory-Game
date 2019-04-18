@@ -21,6 +21,8 @@ include "p16f84A.inc"
 		IsOpen	EQU	d'22'	;indicates if a card is already open or not
 		
 		;LETTERS
+		;Each of thee L registers contains the 8 bit 
+		;representation of each letter on the LCD
 		L1		EQU	d'23'
 		L2		EQU	d'24'
 		L3		EQU	d'25'
@@ -35,6 +37,7 @@ include "p16f84A.inc"
 		L12		EQU	d'34'
 
 		;Flags to tell whether each letter is currently open or not
+		;if the 0 bit is set, the letter is open
 		S1		EQU	d'35'
 		S2		EQU	d'36'
 		S3		EQU	d'37'
@@ -48,22 +51,37 @@ include "p16f84A.inc"
 		S11		EQU	d'45'
 		S12		EQU	d'46'
 
+		;RECENT reg keeps track of the first letter opened in a pair
 		RECENT	EQU	d'47'
+
+		;RECENT@ indicates the position of RECENT on the LCD
 		RECENT@	EQU	d'48'
+		
 		TEMP	EQU	d'49'
+
+		;MATCHES keeps track of the number of matches in a game
 		MATCHES	EQU	d'50'
+		
+		;NOMATCH keeps track of the number of mismatches
+		;Used in Mode1
+		;Not cumulative -- every two mismatches, clear and repeat
 		NOMATCH EQU d'51'
+
+
 		ORG		0x0
 		GOTO 	MAIN
 
+		;address 0x04 for interrupts
 		ORG		0x04
 		BTFSC	INTCON,RBIF
 		GOTO	RBINT
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;; OUTPUTS AND INPUTS ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-MAIN	CLRF	MATCHES
+MAIN	CALL	DELAY4
+		CLRF	MATCHES
 		CLRF	NOMATCH
 		MOVLW	b'0011'
 		MOVWF	L1
@@ -83,7 +101,7 @@ MAIN	CLRF	MATCHES
 		MOVLW	b'0010'
 		MOVWF	L5
 		MOVWF	L7
-		
+		;ABOVE: storing the letters in the given L registers
 
 		CLRF	SCENE
 		CLRF	PORTB
@@ -147,21 +165,21 @@ MEMORY_GAME
 		MOVWF	PORTA
 		CALL	ET
 
-		;M
+		;Print M
 		CALL	Letter_M
 
-		;E
+		;Print E
 		CALL	Letter_E
 
-		;M
+		;Print M
 		CALL	Letter_M
 
-		;O
+		;Print O
 		CALL	Letter_O
 
 		CALL	Letter_R
 
-		;Y
+		;Print Y
 		MOVLW	b'10101'
 		MOVWF	PORTA
 		CALL	ET
@@ -169,10 +187,10 @@ MEMORY_GAME
 		MOVWF	PORTA
 		CALL	ET
 
-		;blank space
+		;Print blank space
 		CALL	Blank_Space
 
-		;G
+		;Print G
 		MOVLW	b'10100'
 		MOVWF	PORTA
 		CALL	ET
@@ -180,15 +198,16 @@ MEMORY_GAME
 		MOVWF	PORTA
 		CALL	ET
 
+		;Print A
 		CALL	Letter_A
 
-		;M
+		;Print M
 		CALL	Letter_M
 
-		;E
+		;Print E
 		CALL	Letter_E
 		
-		;delaying the welcome message for about 2.5 seconds
+		;freezing the welcome message for about 2.5 seconds on the LCD
 		MOVLW	d'50'
 		MOVWF	c1
 Label	CALL	DELAY2
@@ -196,7 +215,9 @@ Label	CALL	DELAY2
 		GOTO Label
 		
 
-MAIN_MENU
+MAIN_MENU	;player should now see " MODE	*1	2	3 "
+
+		;Removing the cursor (DISPLAAY ON/OFF)
 		MOVLW	b'00000'
 		MOVWF	PORTA
 		CALL	ET
@@ -213,12 +234,15 @@ MAIN_MENU
 		MOVLW	b'1000'
 		MOVWF	SCENE	; we are in the "main menu" scene
 		MOVLW	d'6'
-		MOVWF	AC
+		MOVWF	AC		; after printing the required characters, 
+						; our current address will be 06
 
 		;M
 		CALL	Letter_M
+
 		;O
 		CALL	Letter_O
+
 		;D
 		MOVLW	b'10100'
 		MOVWF	PORTA
@@ -226,6 +250,7 @@ MAIN_MENU
 		MOVLW	b'10100'
 		MOVWF	PORTA
 		CALL	ET
+
 		;E
 		CALL	Letter_E
 
@@ -233,8 +258,7 @@ MAIN_MENU
 		CALL	Blank_Space
 		CALL	Blank_Space
 		
-
-		;1
+		;Print 1
 		MOVLW	b'10011'
 		MOVWF	PORTA
 		CALL	ET
@@ -245,7 +269,7 @@ MAIN_MENU
 		CALL	Blank_Space
 		CALL	Blank_Space
 		
-		;2
+		;Print 2
 		MOVLW	b'10011'
 		MOVWF	PORTA
 		CALL	ET
@@ -256,7 +280,7 @@ MAIN_MENU
 		CALL	Blank_Space
 		CALL	Blank_Space
 		
-		;3
+		;Print 3
 		MOVLW	b'10011'
 		MOVWF	PORTA
 		CALL	ET
@@ -264,7 +288,7 @@ MAIN_MENU
 		MOVWF	PORTA
 		CALL	ET
 		
-		;SET ADDRESS
+		;SET ADDRESS to 05
 		MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
@@ -272,11 +296,15 @@ MAIN_MENU
 		MOVWF	PORTA
 		CALL	ET
 
-		;Asterisk cursor (*)
+		;Print asterisk before '1' (*)
 		CALL	Asterisk
-		BSF		INTCON,GIE
+		BSF		INTCON,GIE	;setting GIE means the program now responds to interrupts
+							; this is not done before so that it goes through 
+							; the welcome routine directly 
 
-InfLoop	BTFSC	SCENE,3
+InfLoop		;waiting for the player to navigate between modes or choose a mode
+
+		BTFSC	SCENE,3
 		GOTO	InfLoop
 		BTFSC	SCENE,2
 		GOTO	MODE1
@@ -286,8 +314,15 @@ InfLoop	BTFSC	SCENE,3
 		GOTO	MODE3
 		GOTO	InfLoop
 
+; this is where MODE1 starts
+; - print on the LCD
+; -- wait for the player to start playing by flipping cards
+; NOTE: we clear the S registers (S1 through S12) to make sure that all
+;		cards are initially closed every time we start to play 
 
-MODE1	MOVLW	d'35'
+MODE1	
+		;clear S1 through S12
+		MOVLW	d'35'
 		MOVWF	FSR
 		MOVLW	d'13'
 		MOVWF	COUNTER
@@ -298,9 +333,14 @@ N		CLRF	INDF
 		INCF	FSR
 		GOTO 	S
 
+
+		
 cont	CLRF	MATCHES
 		CLRF	NOMATCH
-		CALL	INITIAL_CARDS
+		CLRF	tempA2
+		CALL	INITIAL_CARDS	;prints 12 white boxes on LCD
+		
+		;Set address to 08 in order to print S------W
 		MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
@@ -308,8 +348,10 @@ cont	CLRF	MATCHES
 		MOVWF	PORTA
 		CALL	ET
 		
+		;Print S
 		CALL	Letter_S
-
+		
+		;Print _| 6 times
 		MOVLW	d'7'
 		MOVWF	COUNTER
 		
@@ -324,23 +366,35 @@ AX		MOVLW	b'11010'
 		CALL	ET
 		GOTO	X
 
+		;Print W
 AA		CALL	Letter_W
 
+		;Clear address to set cursor at 00
 		CALL	Clear_Address
 		CLRF	AC
 		MOVLW	d'9'
-		MOVWF	tempA1
+		MOVWF	tempA1	;at this point tempA1 is used to print the black boxes
+						; as the player does more and more mismatches
+						; tempA1 will hold the address of the position 
+						; at which the next black box is to be printed
+						; initially its at 09, which is right next to S
+						; when the player does the first mismatch
+						; we print a black box and move tempA1 to 0A
+
+;waiting for interrupts
 Mode1_Loop
 		BTFSC	SCENE,3
 		GOTO	MAIN_MENU
 		GOTO	Mode1_Loop
 
-MODE2
-MODE3
+MODE2	
+MODE3	
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;; COMMONLY USED FUNCTIONS IN CODE ;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;Clears Display of LCD
 Clear_Display
 		MOVLW	b'00000'
 		MOVWF	PORTA
@@ -350,6 +404,7 @@ Clear_Display
 		CALL	ET
 		RETURN
 
+;Prints a blank space
 Blank_Space
 		MOVLW	b'11010'
 		MOVWF	PORTA
@@ -359,6 +414,7 @@ Blank_Space
 		CALL	ET
 		RETURN
 
+;Prints an asterisk
 Asterisk
 		MOVLW	b'10010'
 		MOVWF	PORTA
@@ -438,6 +494,14 @@ ET		BSF		PORTB,1
 		Call	DELAY
 		RETURN
 
+; Moves the asterisk
+; This function is used in the MAIN MENU scene
+; FUNCTIONALITY: 
+; we know that the asterisk can only be at 3 positions
+; in our case they are addresses 05, 08, 0B on the LCD
+; so we take 3 cases
+; if AST is at 05, delete it and print it at 08
+; same for at 08 and 0B
 
 SET_AST
 		;Set Address
@@ -471,6 +535,12 @@ BOX		MOVLW	b'11101'
 		RETURN
 
 
+; Prints 12 white cards which is the initial display of every game
+; we print 6 boxes on the first line
+; set the address to the second line
+; print the other 6 boxes
+
+ 
 INITIAL_CARDS
 		;DISPLAY ON/OFF (activating cursor)
 		MOVLW	b'00000'
@@ -500,6 +570,7 @@ INITIAL_CARDS
 
 		RETURN
 
+;UTILITY prints a white box 6 times
 UTILITY	MOVLW	d'6'
 		MOVWF	COUNTER
 L		CALL	BOX
@@ -507,8 +578,19 @@ L		CALL	BOX
 		GOTO	L
 		RETURN
 
+; function that controls all button pushes during a game
+; if a player hits any of the four available buttons in-game
+; the interrupt will call this function 
+; this is done over and over until the game ends,
+; wherein the score is calculated later on
 
 PLAY_GAME
+; to arrive here
+; the player had pressed one of the four buttons
+; so we have four cases to take care of
+; pressing right or left only requires us to move the DD address
+; and update the corresponding flags
+
 		BTFSS	PORTB,5
 		GOTO	RIGHT
 		BTFSS	PORTB,4
@@ -570,7 +652,9 @@ UP_DOWN	MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
 		GOTO	DONE
-
+; flipping a card...
+; make sure the cards the player is trying to flip is not already open
+; this is where the S flags come in handy 
 FLIP	MOVLW	d'35'
 		MOVWF	FSR
 		MOVF	AC,w
@@ -584,10 +668,14 @@ FLIP	MOVLW	d'35'
 		BTFSC	INDF,0
 		GOTO	BUZZ
 		
-		
+; we need to know whether this is the first card of a pair or the second
+; for this, there is a special flag we have declared which is IsOpen
+; if the 0 bit is set then the second card is being flipped
+
 		BTFSS	IsOpen,0
 		GOTO	FIRST
 		GOTO	SECOND
+
 
 FIRST	MOVF	AC,w
 		MOVWF	RECENT@
@@ -612,6 +700,11 @@ FIRST	MOVF	AC,w
 		BSF		INDF,0
 		BSF		IsOpen,0
 		GOTO	DONE
+
+; upon flipping the second card in a pair,
+; we need to check if the pair is correct or not
+; we compare the 8 bit value of the character we are flipping,
+; with the chracter we just flipped, which is in the RECENT register
 		
 SECOND	BCF		IsOpen,0
 		MOVLW	d'12'
@@ -629,6 +722,10 @@ SECOND	BCF		IsOpen,0
 		BTFSS	STATUS,Z
 		GOTO	MISMATCH
 
+; if the two cards match, we increment the MATCHES register
+; keep both cards open
+; generate buzz
+
 MATCH	INCF	MATCHES
 		MOVLW	d'12'
 		ADDWF	FSR
@@ -638,9 +735,18 @@ MATCH	INCF	MATCHES
 		CLRF	AC
 		CLRF	RECENT
 		GOTO	BUZZ
-		
+
+; in case the two cards don't match
+; we should close both
+; the address is currently at the second card
+; so we replace it with a white box and clear the corresponding S register
+; the address of the first card will be in RECENT@
+; we set DD ram to it, replace it with a white box and clear the corresponding S reg
+; we increment the NOMATCH register
+; we also generate a red brief light		
 MISMATCH
 		INCF	NOMATCH
+		INCF	tempA2
 		MOVF	TEMP,w
 		MOVWF	FSR
 		BCF		INDF,0
@@ -729,6 +835,7 @@ LOOP2	INCFSZ	COUNT1,F
 		GOTO 	LOOP2
 		RETURN
 
+; ~ 196 msec delay
 DELAY3	MOVLW	h'00'
 		MOVWF	COUNT1
 		MOVLW	d'255'
@@ -739,6 +846,7 @@ LOOP3	INCFSZ	COUNT1,F
 		GOTO 	LOOP3
 		RETURN
 
+; ~ 1.97 sec delay
 DELAY4	MOVLW	h'00'
 		MOVWF	COUNT1
 		MOVLW	d'255'
@@ -758,6 +866,11 @@ LOOP4	INCFSZ	COUNT1,F
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INTERRUPTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; treats RB4-7 interrupts
+; we first check in which scene we are to know what each button means
+; in the MAIN_MENU, we can only use RB5 and RB7
+; in all other scenes, we can use the 44 buttons
+
 RBINT	CALL	DELAY
 		BTFSC	SCENE,3
 		GOTO	MENUINT
@@ -769,11 +882,18 @@ RBINT	CALL	DELAY
 		GOTO	MODE3INT
 		GOTO	LEAVEINT1
 
+; Arriving here means that the interrupt is from the MAIN_MENU scene
 MENUINT	BTFSS	PORTB,7
 		GOTO	CHECK_MODE
 		BTFSS	PORTB,5
 		GOTO	MOVE_AST
 		GOTO	LEAVEINT1
+
+; if the player pressed confirm, we need to check what mode they selected
+; this is done through the location of the asterisk
+; if its last position was near 11, then the player selected MODE 1
+; etc.
+; we compare the position of the current DD ram address to the 3 possibilities
 
 CHECK_MODE
 		MOVLW	d'4'
@@ -863,12 +983,12 @@ AT_1	MOVLW	d'9'
 		CALL	SET_AST
 		
 		GOTO 	LEAVEINT1
-  
+; arriving here means that the interrupt is from MODE 1
 MODE1INT
 		CALL	PLAY_GAME			
 		MOVLW	d'6'
 		SUBWF	MATCHES,0
-		BTFSC	STATUS,Z
+		BTFSC	STATUS,Z ; if we have 6 matches, we should exit the game
 		GOTO	END1
 
 		MOVLW	d'9'
@@ -876,9 +996,9 @@ MODE1INT
 		BTFSC	STATUS,Z
 		GOTO	FA
 		MOVLW	d'2'
-		SUBWF	NOMATCH
+		SUBWF	NOMATCH 
 		BTFSC	STATUS,Z
-		GOTO	WEAKER
+		GOTO	WEAKER	; this means that we need to print a black box
 		ADDWF	NOMATCH
 		GOTO	LEAVEINT1
 FA		DECF	NOMATCH,0
@@ -889,7 +1009,7 @@ FA		DECF	NOMATCH,0
 WEAKER	MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
-		MOVF	tempA1,w
+		MOVF	tempA1,w ; use tempA1 to know where to print the black box
 		MOVWF	PORTA
 		CALL	ET
 
@@ -906,6 +1026,15 @@ WEAKER	MOVLW	b'01000'
 		CLRF	AC
 		GOTO 	LEAVEINT1
 
+; arrive hear when the game is over
+; we should print the result for the player and return to the main menu
+; there are three cases, SUPER, AVG, WEAK, depending on the number
+; of committed mismatches
+; this is known from the location of tempA1
+; if the right-most black box is at 10, print SUPER
+; if its at 12, print AVG
+; if its at 14, print WEAK
+
 END1	MOVLW	b'01100'
 		MOVWF	PORTA
 		CALL	ET
@@ -916,22 +1045,20 @@ END1	MOVLW	b'01100'
 		MOVLW	b'1000'
 		MOVWF	SCENE
 		
-		MOVLW	d'11'
-		SUBWF	tempA1,0
-		MOVWF	tempB1
+		MOVLW	d'4'
+		SUBWF	tempA2,0
 		BTFSC	STATUS,Z
 		GOTO	SUPER
+		MOVWF	tempB1
 		BTFSC	tempB1,7
 		GOTO	SUPER
-		MOVLW	d'13'
-		SUBWF	tempA1,0
+		MOVLW	d'8'
+		SUBWF	tempA2,0
+		BTFSC	STATUS,Z
+		GOTO	AVG
 		MOVWF	tempB1
 		BTFSC	tempB1,7
 		GOTO	AVG
-		MOVLW	d'15'
-		SUBWF	tempA1,0
-		MOVWF	tempB1
-		BTFSC	tempB1,7
 		GOTO	WEAK
 
 SUPER	CALL	Letter_S
