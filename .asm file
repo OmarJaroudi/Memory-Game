@@ -66,7 +66,8 @@ include "p16f84A.inc"
 		;Used in Mode1
 		;Not cumulative -- every two mismatches, clear and repeat
 		NOMATCH EQU d'51'
-
+		
+		COUNTER2	EQU	d'52'
 
 		ORG		0x0
 		GOTO 	MAIN
@@ -76,14 +77,14 @@ include "p16f84A.inc"
 		BTFSC	INTCON,RBIF
 		GOTO	RBINT
 
+		BTFSC	INTCON,T0IF
+		GOTO	TMR0INT
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;; OUTPUTS AND INPUTS ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-MAIN	CALL	DELAY4
-		CLRF	MATCHES
-		CLRF	NOMATCH
-		MOVLW	b'0011'
+MAIN	MOVLW	b'0011'
 		MOVWF	L1
 		MOVWF	L10
 		MOVLW	b'0001'
@@ -114,8 +115,10 @@ MAIN	CALL	DELAY4
 		BCF		STATUS,RP0
 		CLRF	INTCON
 		BCF		INTCON,GIE
-		BSF		INTCON,RBIE
+		BSF		INTCON,RBIE		; to use RB4-77 interrupts
 		CLRF	PORTA
+		MOVLW	d'155'
+		MOVWF	COUNTER2
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;; INITIALIZATION SEQUENCE ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -133,12 +136,9 @@ MAIN	CALL	DELAY4
 		CALL	ET
 		
 		;DISPLAY ON/OFF
-		MOVLW	b'00000'
-		MOVWF	PORTA
-		CALL	ET
 		MOVLW	b'01100'
-		MOVWF	PORTA
-		CALL	ET
+		MOVWF	tempA1
+		CALL	DISPLAY_ON_OFF
 
 		;CLEAR DISPLAY
 		CALL	Clear_Display
@@ -216,14 +216,12 @@ Label	CALL	DELAY2
 		
 
 MAIN_MENU	;player should now see " MODE	*1	2	3 "
-
+		
+		BCF		INTCON,T0IE
 		;Removing the cursor (DISPLAAY ON/OFF)
-		MOVLW	b'00000'
-		MOVWF	PORTA
-		CALL	ET
 		MOVLW	b'01100'
-		MOVWF	PORTA
-		CALL	ET
+		MOVWF	tempA1
+		CALL	DISPLAY_ON_OFF
 
 		;CLEAR DISPLAY
 		CALL	Clear_Display
@@ -259,34 +257,23 @@ MAIN_MENU	;player should now see " MODE	*1	2	3 "
 		CALL	Blank_Space
 		
 		;Print 1
-		MOVLW	b'10011'
-		MOVWF	PORTA
-		CALL	ET
 		MOVLW	b'10001'
-		MOVWF	PORTA
-		CALL	ET
+		MOVWF	tempA1
+		CALL	NUMBER
 	
 		CALL	Blank_Space
 		CALL	Blank_Space
 		
 		;Print 2
-		MOVLW	b'10011'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'10010'
-		MOVWF	PORTA
-		CALL	ET
+		INCF	tempA1
+		CALL	NUMBER
 
 		CALL	Blank_Space
 		CALL	Blank_Space
 		
 		;Print 3
-		MOVLW	b'10011'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'10011'
-		MOVWF	PORTA
-		CALL	ET
+		INCF	tempA1
+		CALL	NUMBER
 		
 		;SET ADDRESS to 05
 		MOVLW	b'01000'
@@ -321,32 +308,14 @@ InfLoop		;waiting for the player to navigate between modes or choose a mode
 ;		cards are initially closed every time we start to play 
 
 MODE1	
-		;clear S1 through S12
-		MOVLW	d'35'
-		MOVWF	FSR
-		MOVLW	d'13'
-		MOVWF	COUNTER
-S		DECFSZ	COUNTER,F
-		GOTO	N
-		GOTO 	cont
-N		CLRF	INDF
-		INCF	FSR
-		GOTO 	S
-
-
-		
-cont	CLRF	MATCHES
+		CALL	Clear_S
+	
+		CLRF	MATCHES
 		CLRF	NOMATCH
 		CLRF	tempA2
 		CALL	INITIAL_CARDS	;prints 12 white boxes on LCD
 		
-		;Set address to 08 in order to print S------W
-		MOVLW	b'01000'
-		MOVWF	PORTA
-		CALL	ET
-		MOVLW	b'01000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	Set_AT_8
 		
 		;Print S
 		CALL	Letter_S
@@ -371,7 +340,6 @@ AA		CALL	Letter_W
 
 		;Clear address to set cursor at 00
 		CALL	Clear_Address
-		CLRF	AC
 		MOVLW	d'9'
 		MOVWF	tempA1	;at this point tempA1 is used to print the black boxes
 						; as the player does more and more mismatches
@@ -387,12 +355,59 @@ Mode1_Loop
 		GOTO	MAIN_MENU
 		GOTO	Mode1_Loop
 
-MODE2	
+MODE2	MOVLW	d'155'
+		MOVWF	COUNTER2
+		CALL	Clear_S
+		CLRF	MATCHES
+		CALL	INITIAL_CARDS
+		CALL	Set_AT_8
+		CALL	Letter_R
+		CALL	Letter_E
+		CALL	Letter_M
+		CALL	Blank_Space
+		
+		;Printing T
+		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+
+		MOVLW	b'11001'
+		MOVWF	tempA1
+		CALL	NUMBER	;print 9
+		MOVLW	b'10000'
+		MOVWF	tempA1
+		CALL	NUMBER
+		MOVLW	b'11001'
+		MOVWF	tempA1
+		MOVLW	b'1001'
+		MOVWF	tempB1
+		CALL	Clear_Address	
+		BSF		INTCON,T0IE		; to use timer interrupt
+	
+
+	
+Mode2_Loop
+		BTFSC	SCENE,3
+		GOTO	MAIN_MENU	
+		GOTO	Mode2_Loop
+		
 MODE3	
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;; COMMONLY USED FUNCTIONS IN CODE ;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+DISPLAY_ON_OFF
+		MOVLW	b'00000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVF	tempA1,w
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
 
 ;Clears Display of LCD
 Clear_Display
@@ -477,12 +492,39 @@ Letter_E
 		MOVWF	PORTA
 		CALL	ET
 		RETURN
-
+Letter_C
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
 Letter_A	
 		MOVLW	b'10100'
 		MOVWF	PORTA
 		CALL	ET
 		MOVLW	b'10001'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+
+;prints a number form 0 to 9 on the LCD
+NUMBER	MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		MOVF	tempA1,w
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+;Set address to 08 in order to print S------W or  REMT90 etc.
+Set_AT_8
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'01000'
 		MOVWF	PORTA
 		CALL	ET
 		RETURN
@@ -540,15 +582,33 @@ BOX		MOVLW	b'11101'
 ; set the address to the second line
 ; print the other 6 boxes
 
+
+;clear S1 through S12 registers
+Clear_S	MOVLW	d'35'
+		MOVWF	FSR
+		MOVLW	d'13'
+		MOVWF	COUNTER
+S		DECFSZ	COUNTER,F
+		GOTO	N
+		GOTO 	cont
+N		CLRF	INDF
+		INCF	FSR
+		GOTO 	S
+cont	RETURN
  
+LOAD_UPPER_AC
+		MOVLW	b'01000'
+		BTFSC	AC,7
+		ADDLW	b'100'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
 INITIAL_CARDS
 		;DISPLAY ON/OFF (activating cursor)
-		MOVLW	b'00000'
-		MOVWF	PORTA
-		CALL	ET
 		MOVLW	b'01110'
-		MOVWF	PORTA
-		CALL	ET
+		MOVWF	tempA1
+		CALL	DISPLAY_ON_OFF
 
 		CALL	Clear_Display
 		
@@ -608,11 +668,7 @@ RIGHT	MOVF	AC,w
 		SUBWF	c1
 		BTFSC	STATUS,Z
 		GOTO	BUZZ
-		MOVLW	b'01000'
-		BTFSC	AC,7
-		ADDLW	b'100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LOAD_UPPER_AC
 		INCF	AC
 		MOVF	AC,w
 		MOVWF	PORTA
@@ -626,11 +682,7 @@ LEFT	MOVF	AC,w
 		SUBWF	c1
 		BTFSC	STATUS,Z
 		GOTO	BUZZ
-		MOVLW	b'01000'
-		BTFSC	AC,7
-		ADDLW	b'100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LOAD_UPPER_AC
 		DECF	AC
 		MOVF	AC,w
 		MOVWF	PORTA
@@ -691,7 +743,6 @@ FIRST	MOVF	AC,w
 		CALL	ET
 		
 		CALL	Clear_Address
-		CLRF	AC
 		
 		MOVLW	d'12'
 		ADDWF	FSR
@@ -732,7 +783,6 @@ MATCH	INCF	MATCHES
 		BSF		INDF,0
 		
 		CALL	Clear_Address
-		CLRF	AC
 		CLRF	RECENT
 		GOTO	BUZZ
 
@@ -743,7 +793,8 @@ MATCH	INCF	MATCHES
 ; the address of the first card will be in RECENT@
 ; we set DD ram to it, replace it with a white box and clear the corresponding S reg
 ; we increment the NOMATCH register
-; we also generate a red brief light		
+; we also generate a red brief light
+		
 MISMATCH
 		INCF	NOMATCH
 		INCF	tempA2
@@ -790,7 +841,6 @@ MISMATCH
 		BCF		INDF,0
 		
 		CALL	Clear_Address
-		CLRF	AC
 		BCF		PORTB,2
 		GOTO	DONE
 
@@ -808,6 +858,23 @@ Clear_Address
 		MOVLW	b'00000'
 		MOVWF	PORTA
 		CALL	ET
+		CLRF	AC
+		RETURN
+
+
+PRINT_SCORE
+		MOVLW	b'01100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		CALL	Letter_S
+		CALL	Letter_C
+		CALL	Letter_O
+		CALL	Letter_R
+		CALL	Letter_E
+		CALL	Blank_Space
 		RETURN
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; DELAYS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -983,6 +1050,7 @@ AT_1	MOVLW	d'9'
 		CALL	SET_AST
 		
 		GOTO 	LEAVEINT1
+
 ; arriving here means that the interrupt is from MODE 1
 MODE1INT
 		CALL	PLAY_GAME			
@@ -1012,7 +1080,7 @@ WEAKER	MOVLW	b'01000'
 		MOVF	tempA1,w ; use tempA1 to know where to print the black box
 		MOVWF	PORTA
 		CALL	ET
-
+		
 		MOVLW	b'11111'
 		MOVWF	PORTA
 		CALL	ET
@@ -1023,7 +1091,6 @@ WEAKER	MOVLW	b'01000'
 		CALL	Clear_Address
 		INCF	tempA1
 		CLRF	NOMATCH
-		CLRF	AC
 		GOTO 	LEAVEINT1
 
 ; arrive hear when the game is over
@@ -1066,8 +1133,6 @@ SUPER	CALL	Letter_S
 		MOVLW	b'10101'
 		MOVWF	PORTA
 		CALL	ET
-		MOVLW	b'10101'
-		MOVWF	PORTA
 		CALL	ET
 
 		MOVLW	b'10101'
@@ -1125,11 +1190,92 @@ WEAK	CALL	Letter_W
 		CALL	DELAY4
 		BCF		PORTB,2
 		GOTO	LEAVEINT1
+
 MODE2INT
+		CALL	PLAY_GAME
+		MOVLW	d'6'
+		SUBWF	MATCHES,0
+		BTFSC	STATUS,Z 	;if we have 6 matches, we should exit the game
+		GOTO	END2
+		GOTO	LEAVEINT1
+
+END2	MOVLW	b'1000'
+		MOVWF	SCENE
+		CALL	PRINT_SCORE
+		MOVLW	d'6'
+		ADDWF	tempB1
+		MOVLW	d'10'
+		SUBWF	tempB1,0
+		BTFSC	STATUS,Z
+		GOTO	DOUBLE_FIGURES
+		MOVWF	tempB2
+		BTFSS	tempB2,7	;meaning result is negative
+		GOTO	DOUBLE_FIGURES
+		GOTO	SA
+
+DOUBLE_FIGURES
+		MOVLW	b'10001'
+		MOVWF	tempA1
+		CALL	NUMBER
+
+		MOVLW	d'10'
+		SUBWF	tempB1,0
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	DELAY4
+		GOTO	LEAVEINT1
+		
+SA		MOVF	tempB1,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	DELAY4
+		GOTO	LEAVEINT1
+		
 MODE3INT
 
 LEAVEINT1	BCF	INTCON,RBIF
 			RETFIE
 	
+		
+TMR0INT
+		DECFSZ	COUNTER2,F
+		GOTO	LEAVEINT2
+		
+
+		DECF	tempA1
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'01101'
+		MOVWF	PORTA
+		CALL	ET
+		CALL	NUMBER
+		MOVLW	d'155'
+		MOVWF	COUNTER2
+		;restoring old position after decrementing remaining time
+		CALL	LOAD_UPPER_AC
+		MOVF	AC,w
+		MOVWF	PORTA
+		CALL	ET
+		DECFSZ	tempB1,F
+		GOTO	LEAVEINT2
+
+TIME_OVER
+		
+		CALL	PRINT_SCORE
+		MOVF	MATCHES,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	DELAY4
+		MOVLW	b'1000'
+		MOVWF	SCENE
+		
+	
+LEAVEINT2	BCF	INTCON,	T0IF
+			RETFIE
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
 end
