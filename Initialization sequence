@@ -63,4 +63,52 @@ MAIN
 		MOVLW	b'00110'
 		MOVWF	PORTA
 		CALL	ET  
+		
+		
+MEMORY_GAME	
+		;SET ADDRESS
+		MOVLW	b'01000'
+		CALL	LCD
+		MOVLW	b'00010'
+		CALL	LCD
+
+		;Print M
+		CALL	Letter_M
+
+		;Print E
+		CALL	Letter_E
+
+		;Print M
+		CALL	Letter_M
+
+		;Print O
+		CALL	Letter_O
+
+		CALL	Letter_R
+
+		;Print Y
+		MOVLW	b'10101'
+		CALL	LCD
+		MOVLW	b'11001'
+		CALL	LCD
+
+		;Print blank space
+		CALL	Blank_Space
+
+		;Print G
+		MOVLW	b'10100'
+		CALL	LCD
+		MOVLW	b'10111'
+		CALL	LCD
+
+		;Print A
+		CALL	Letter_A
+
+		;Print M
+		CALL	Letter_M
+
+		;Print E
+		CALL	Letter_E
+		
+		CALL	DELAY4
 
