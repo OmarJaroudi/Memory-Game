@@ -1,0 +1,389 @@
+; treats RB4-7 interrupts
+; we first check in which scene we are to know what each button means
+; in the MAIN_MENU, we can only use RB5 and RB7
+; in all other scenes, we can use the 4 buttons
+
+RBINT	CALL	DELAY2
+		BTFSC	SCENE,3
+		GOTO	MENUINT
+		BTFSC	SCENE,2
+		GOTO	MODE1INT
+		BTFSC	SCENE,1
+		GOTO	MODE2INT
+		BTFSC	SCENE,0
+		GOTO	MODE3INT
+		GOTO	LEAVEINT1
+
+; Arriving here means that the interrupt is from the MAIN_MENU scene
+MENUINT	BTFSS	PORTB,7
+		GOTO	CHECK_MODE
+		BTFSS	PORTB,5
+		GOTO	MOVE_AST
+		GOTO	LEAVEINT1
+
+; if the player pressed confirm, we need to check what mode they selected
+; this is done through the location of the asterisk
+; if its last position was near 11, then the player selected MODE 1
+; etc.
+; we compare the position of the current DD ram address to the 3 possibilities
+
+CHECK_MODE
+		MOVLW	d'4'
+		MOVWF	SCENE
+		MOVF 	AC,w
+		MOVWF 	c1
+		MOVLW 	d'6'
+		SUBWF 	c1
+		BTFSC 	STATUS,Z
+		GOTO 	LEAVEINT1
+
+  		MOVLW	d'2'
+		MOVWF	SCENE
+		MOVF 	AC,w
+		MOVWF	c1
+		MOVLW	d'9'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO 	LEAVEINT1
+
+  		MOVLW	d'1'
+		MOVWF	SCENE
+		GOTO 	LEAVEINT1
+		
+MOVE_AST	
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW 	d'12'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	AT_3
+
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW	d'9'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	AT_2
+  
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW	d'6'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	AT_1
+		GOTO	LEAVEINT1
+
+
+AT_3	MOVLW	d'6'
+		MOVWF	AC
+		MOVLW	b'01000'
+		MOVWF	tempA1
+  		MOVLW	b'01011'
+		MOVWF	tempA2
+		MOVLW	b'01000'
+		MOVWF	tempB1
+		MOVLW	b'00101'
+		MOVWF	tempB2
+		CALL	SET_AST
+
+		GOTO	LEAVEINT1
+
+AT_2	MOVLW	d'12'
+		MOVWF	AC
+		MOVLW	b'01000'
+		MOVWF	tempA1
+  		MOVLW	b'01000'
+		MOVWF	tempA2
+		MOVLW	b'01000'
+		MOVWF	tempB1
+		MOVLW	b'01011'
+		MOVWF	tempB2
+		CALL	SET_AST
+  
+		GOTO	LEAVEINT1
+  
+AT_1	MOVLW	d'9'
+		MOVWF	AC
+ 		MOVLW	b'01000'
+		MOVWF	tempA1
+  		MOVLW	b'00101'
+		MOVWF	tempA2
+		MOVLW	b'01000'
+		MOVWF	tempB1
+		MOVLW	b'01000'
+		MOVWF	tempB2
+		CALL	SET_AST
+		
+		GOTO 	LEAVEINT1
+
+; arriving here means that the interrupt is from MODE 1
+MODE1INT
+		CALL	PLAY_GAME			
+		MOVLW	d'6'
+		SUBWF	MATCHES,0
+		BTFSC	STATUS,Z ; if we have 6 matches, we should exit the game
+		GOTO	END1
+
+		MOVLW	d'9'
+		SUBWF	tempA1,0
+		BTFSC	STATUS,Z
+		GOTO	FA
+		MOVLW	d'2'
+		SUBWF	NOMATCH 
+		BTFSC	STATUS,Z
+		GOTO	WEAKER	; this means that we need to print a black box
+		ADDWF	NOMATCH
+		GOTO	LEAVEINT1
+FA		DECF	NOMATCH,0
+		BTFSC	STATUS,Z
+		GOTO	WEAKER
+		GOTO	LEAVEINT1
+
+WEAKER	MOVLW	b'01000'
+		CALL	LCD
+		MOVF	tempA1,w ; use tempA1 to know where to print the black box
+		CALL	LCD
+		
+		MOVLW	b'11111'
+		CALL	LCD
+		MOVLW	b'11111'
+		CALL	LCD
+
+		CALL	Clear_Address
+		INCF	tempA1
+		CLRF	NOMATCH
+		GOTO 	LEAVEINT1
+
+; arrive hear when the game is over
+; we should print the result for the player and return to the main menu
+; there are three cases, SUPER, AVG, WEAK, depending on the number
+; of committed mismatches
+; this is known from the location of tempA1
+; if the right-most black box is at 10, print SUPER
+; if its at 12, print AVG
+; if its at 14, print WEAK
+
+END1	MOVLW	b'01100'
+		CALL	LCD
+		MOVLW	b'01001'
+		CALL	LCD
+		
+		MOVLW	b'1000'
+		MOVWF	SCENE
+		
+		MOVLW	d'4'
+		SUBWF	tempA2,0
+		BTFSC	STATUS,Z
+		GOTO	SUPER
+		MOVWF	tempB1
+		BTFSC	tempB1,7
+		GOTO	SUPER
+		MOVLW	d'8'
+		SUBWF	tempA2,0
+		BTFSC	STATUS,Z
+		GOTO	AVG
+		MOVWF	tempB1
+		BTFSC	tempB1,7
+		GOTO	AVG
+		GOTO	WEAK
+
+SUPER	CALL	Letter_S
+
+		MOVLW	b'10101'
+		CALL	LCD
+		CALL	ET
+
+		MOVLW	b'10101'
+		CALL	LCD
+		MOVLW	b'10000'
+		CALL	LCD
+
+		CALL	Letter_E
+		CALL	Letter_R
+		
+		CALL	FLASH
+		GOTO	LEAVEINT1
+
+AVG		CALL	Letter_A
+
+		MOVLW	b'10101'
+		CALL	LCD
+		MOVLW	b'10110'
+		CALL	LCD
+
+		MOVLW	b'10100'
+		CALL	LCD
+		MOVLW	b'10111'
+		CALL	LCD
+		BSF		PORTB,3
+		CALL	DELAY4
+		BCF		PORTB,3
+		GOTO	LEAVEINT1
+
+WEAK	CALL	Letter_W
+		CALL	Letter_E
+		CALL	Letter_A
+		
+		MOVLW	b'10100'
+		CALL	LCD
+		MOVLW	b'11011'
+		CALL	LCD
+		BSF		PORTB,2
+		CALL	DELAY4
+		BCF		PORTB,2
+		GOTO	LEAVEINT1
+
+MODE2INT
+		CALL	PLAY_GAME
+		MOVLW	d'6'
+		SUBWF	MATCHES,0
+		BTFSC	STATUS,Z 	;if we have 6 matches, we should exit the game
+		GOTO	END2
+		GOTO	LEAVEINT1
+
+END2	MOVLW	b'1000'
+		MOVWF	SCENE
+		CALL	PRINT_SCORE
+		MOVLW	d'6'
+		ADDWF	tempB1
+		MOVLW	d'10'
+		SUBWF	tempB1,0
+		BTFSC	STATUS,Z
+		GOTO	DOUBLE_FIGURES
+		MOVWF	tempB2
+		BTFSS	tempB2,7	;meaning result is negative
+		GOTO	DOUBLE_FIGURES
+		GOTO	SA
+
+DOUBLE_FIGURES
+		MOVLW	b'10001'
+		MOVWF	tempA1
+		CALL	NUMBER
+
+		MOVLW	d'10'
+		SUBWF	tempB1,0
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	FLASH
+		GOTO	LEAVEINT1
+		
+SA		MOVF	tempB1,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	FLASH
+		GOTO	LEAVEINT1
+		
+MODE3INT
+		CALL	PLAY_GAME
+		BTFSC	MOVE,0
+		GOTO	LEAVEINT1
+		BTFSC	SUCCESS,0
+		GOTO	SUCC
+
+PENALTY		;arriving here means we have a mismatch --> calculate penalty
+	
+		MOVLW	b'01000'
+		CALL	LCD
+		MOVLW	b'01001'
+		CALL	LCD			
+		
+		MOVF	PEN,w
+		SUBWF	SCR
+		BTFSC	SCR,7
+		CLRF	SCR
+		
+		ADDWF	NEG		
+		CLRF	PEN	
+		MOVF	NEG,w
+		MOVWF	tempB2
+		CALL	Check_Double
+		BTFSC	DF,0
+		GOTO	DOUBLE_FIGS
+		GOTO	SINGLES
+		
+
+DOUBLE_FIGS	
+		MOVF	NEG,w
+		MOVWF	tempB1
+		CALL	PRINT_DOUBLE
+		GOTO	UPDATE_TOTAL
+
+SINGLES	MOVF	NEG,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	Blank_Space
+		GOTO	UPDATE_TOTAL
+		
+SUCC	INCF	SCR
+		MOVLW	b'01000'
+		CALL	LCD
+		MOVLW	b'01101'
+		CALL	LCD
+		
+		MOVF	MATCHES,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		BCF		SUCCESS,0
+		
+UPDATE_TOTAL
+		MOVLW	b'01100'
+		CALL	LCD
+		MOVLW	b'01110'
+		CALL	LCD
+
+		MOVF	SCR,w
+		MOVWF	tempB2
+		CALL	Check_Double
+		BTFSC	DF,0
+		GOTO	DOUBLE
+		GOTO	SINGLE
+
+DOUBLE	MOVF	SCR,w
+		MOVWF	tempB1
+		CALL	PRINT_DOUBLE
+		GOTO	Check_End
+
+SINGLE	MOVF	SCR,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	Blank_Space
+		GOTO	Check_End
+
+Check_End
+		
+		MOVLW	d'6'
+		SUBWF	MATCHES,0
+		BTFSC	STATUS,Z
+		GOTO	END3
+
+		CLRW	
+		SUBWF	SCR,0
+		BTFSC	STATUS,Z
+		GOTO	END3
+
+		CALL	Clear_Address
+		GOTO	LEAVEINT1
+
+END3	MOVLW	b'1000'
+		MOVWF	SCENE
+		MOVLW	d'6'
+		SUBWF	MATCHES,0
+		BTFSC	STATUS,Z
+		GOTO	WIN
+		CALL	BUZZ
+		CALL	BUZZ
+		CALL	BUZZ
+		CALL	DELAY4
+		GOTO	LEAVEINT1
+
+WIN		CALL	FLASH
+	
+
+	
+LEAVEINT1	BCF	INTCON,RBIF
+			RETFIE
