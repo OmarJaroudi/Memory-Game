@@ -68,6 +68,12 @@ include "p16f84A.inc"
 		NOMATCH EQU d'51'
 		
 		COUNTER2	EQU	d'52'
+		PEN		EQU	d'53'
+		SUCCESS	EQU	d'54'
+		NEG		EQU	d'55'
+		SCR		EQU	d'56'
+		MOVE	EQU	d'57'
+		DF		EQU	d'58'
 
 		ORG		0x0
 		GOTO 	MAIN
@@ -84,7 +90,9 @@ include "p16f84A.inc"
 ;;;;;;;;;;;;;;;;;;;;;;;; OUTPUTS AND INPUTS ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-MAIN	MOVLW	b'0011'
+MAIN	
+
+		MOVLW	b'0011'
 		MOVWF	L1
 		MOVWF	L10
 		MOVLW	b'0001'
@@ -159,11 +167,9 @@ MAIN	MOVLW	b'0011'
 MEMORY_GAME	
 		;SET ADDRESS
 		MOVLW	b'01000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'00010'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		;Print M
 		CALL	Letter_M
@@ -181,22 +187,18 @@ MEMORY_GAME
 
 		;Print Y
 		MOVLW	b'10101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'11001'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		;Print blank space
 		CALL	Blank_Space
 
 		;Print G
 		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'10111'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		;Print A
 		CALL	Letter_A
@@ -243,11 +245,9 @@ MAIN_MENU	;player should now see " MODE	*1	2	3 "
 
 		;D
 		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		;E
 		CALL	Letter_E
@@ -277,11 +277,9 @@ MAIN_MENU	;player should now see " MODE	*1	2	3 "
 		
 		;SET ADDRESS to 05
 		MOVLW	b'01000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'00101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		;Print asterisk before '1' (*)
 		CALL	Asterisk
@@ -328,11 +326,9 @@ X		DECFSZ	COUNTER,F
 		GOTO 	AX
 		GOTO	AA
 AX		MOVLW	b'11010'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'10011'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		GOTO	X
 
 		;Print W
@@ -368,11 +364,9 @@ MODE2	MOVLW	d'155'
 		
 		;Printing T
 		MOVLW	b'10101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		MOVLW	b'11001'
 		MOVWF	tempA1
@@ -387,18 +381,69 @@ MODE2	MOVLW	d'155'
 		CALL	Clear_Address	
 		BSF		INTCON,T0IE		; to use timer interrupt
 	
-
-	
 Mode2_Loop
 		BTFSC	SCENE,3
 		GOTO	MAIN_MENU	
 		GOTO	Mode2_Loop
 		
-MODE3	
 
+MODE3	MOVLW	d'13'
+		MOVWF	SCR
+		CALL	Clear_S
+		BCF		SUCCESS,0
+		CLRF	PEN
+		CLRF	NEG
+		CLRF	MATCHES
+		CLRF	NOMATCH
+		CLRF	tempA2
+		CLRF	tempB1
+		CLRF	tempB2
+		CLRF	tempA1
+		CALL	INITIAL_CARDS	;prints 12 white boxes on LCD
+		
+		CALL	Set_AT_8
+		
+		MOVLW	b'10010'
+		CALL	LCD
+		MOVLW	b'11101'
+		CALL	LCD
+
+		MOVLW	d'16'
+		MOVWF	tempA1
+		CALL	NUMBER		;print 0
+
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+		MOVLW	b'10010'
+		CALL	LCD
+		MOVLW	b'11011'
+		CALL	LCD
+
+		
+		CALL	NUMBER
+
+		CALL	PRINT_SCORE
+		
+		MOVLW	b'10001'
+		MOVWF	tempA1
+		CALL	NUMBER
+		MOVLW	b'10011'
+		MOVWF	tempA1
+		CALL	NUMBER
+		CALL	Clear_Address
+		
+Mode3_Loop
+		BTFSC	SCENE,3
+		GOTO	MAIN_MENU	
+		GOTO	Mode3_Loop	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;; COMMONLY USED FUNCTIONS IN CODE ;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+LCD		MOVWF	PORTA
+		CALL	ET
+		RETURN
 
 DISPLAY_ON_OFF
 		MOVLW	b'00000'
@@ -519,7 +564,7 @@ NUMBER	MOVLW	b'10011'
 		CALL	ET
 		RETURN
 
-;Set address to 08 in order to print S------W or  REMT90 etc.
+;Set address to 08 in order to print S------W or  REM T90 etc.
 Set_AT_8
 		MOVLW	b'01000'
 		MOVWF	PORTA
@@ -582,6 +627,16 @@ BOX		MOVLW	b'11101'
 ; set the address to the second line
 ; print the other 6 boxes
 
+FLASH	BSF		PORTB,3
+		CALL	DELAY4
+		BSF		PORTB,2
+		BCF		PORTB,3
+		CALL	DELAY4
+		BSF		PORTB,3
+		BCF		PORTB,2
+		CALL	DELAY4
+		BCF		PORTB,3
+		RETURN
 
 ;clear S1 through S12 registers
 Clear_S	MOVLW	d'35'
@@ -661,7 +716,8 @@ PLAY_GAME
 		GOTO	FLIP
 		GOTO	DONE
 
-RIGHT	MOVF	AC,w
+RIGHT	BSF		MOVE,0
+		MOVF	AC,w
 		MOVWF	c1
 		BCF		c1,7
 		MOVLW	d'5'
@@ -675,7 +731,8 @@ RIGHT	MOVF	AC,w
 		CALL	ET
 		GOTO	DONE
 
-LEFT	MOVF	AC,w
+LEFT	BSF		MOVE,0
+		MOVF	AC,w
 		MOVWF	c1
 		BCF		c1,7
 		CLRW	
@@ -690,7 +747,8 @@ LEFT	MOVF	AC,w
 		GOTO 	DONE
 
 
-UP_DOWN	MOVLW	b'01000'
+UP_DOWN	BSF		MOVE,0
+		MOVLW	b'01000'
 		MOVWF	PORTA
 		BTFSS	AC,7
 		BSF		PORTA,2
@@ -729,7 +787,8 @@ FLIP	MOVLW	d'35'
 		GOTO	SECOND
 
 
-FIRST	MOVF	AC,w
+FIRST	BSF		MOVE,0
+		MOVF	AC,w
 		MOVWF	RECENT@
 		MOVLW	d'12'
 		SUBWF	FSR
@@ -757,7 +816,8 @@ FIRST	MOVF	AC,w
 ; we compare the 8 bit value of the character we are flipping,
 ; with the chracter we just flipped, which is in the RECENT register
 		
-SECOND	BCF		IsOpen,0
+SECOND	BCF		MOVE,0
+		BCF		IsOpen,0
 		MOVLW	d'12'
 		SUBWF	FSR
 		MOVLW	b'10100'
@@ -778,6 +838,7 @@ SECOND	BCF		IsOpen,0
 ; generate buzz
 
 MATCH	INCF	MATCHES
+		BSF		SUCCESS,0
 		MOVLW	d'12'
 		ADDWF	FSR
 		BSF		INDF,0
@@ -796,11 +857,16 @@ MATCH	INCF	MATCHES
 ; we also generate a red brief light
 		
 MISMATCH
+		BCF		SUCCESS,0
 		INCF	NOMATCH
 		INCF	tempA2
 		MOVF	TEMP,w
 		MOVWF	FSR
 		BCF		INDF,0
+		BTFSC	INDF,7
+		INCF	PEN
+		BTFSS	INDF,7
+		BSF		INDF,7
 		BSF		PORTB,2
 		CALL	DELAY4
 	
@@ -839,7 +905,11 @@ MISMATCH
 		MOVF	c1,w
 		ADDWF	FSR
 		BCF		INDF,0
-		
+		BTFSC	INDF,7
+		INCF	PEN
+		BTFSS	INDF,7
+		BSF		INDF,7
+
 		CALL	Clear_Address
 		BCF		PORTB,2
 		GOTO	DONE
@@ -876,6 +946,30 @@ PRINT_SCORE
 		CALL	Letter_E
 		CALL	Blank_Space
 		RETURN
+
+PRINT_DOUBLE
+		MOVLW	b'10001'
+		MOVWF	tempA1
+		CALL	NUMBER
+
+		MOVLW	d'10'
+		SUBWF	tempB1,0
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		RETURN
+
+Check_Double
+		MOVLW	d'10'
+		SUBWF	tempB2		;check if number of mismatches has become>=10
+		BTFSC	STATUS,Z
+		GOTO	SET1
+		BTFSS	tempB2,7	;meaning the result is negative
+		GOTO	SET1
+		BCF		DF,0
+		GOTO	ret
+SET1	BSF		DF,0
+ret		RETURN
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; DELAYS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -938,7 +1032,7 @@ LOOP4	INCFSZ	COUNT1,F
 ; in the MAIN_MENU, we can only use RB5 and RB7
 ; in all other scenes, we can use the 44 buttons
 
-RBINT	CALL	DELAY
+RBINT	CALL	DELAY2
 		BTFSC	SCENE,3
 		GOTO	MENUINT
 		BTFSC	SCENE,2
@@ -1075,18 +1169,14 @@ FA		DECF	NOMATCH,0
 		GOTO	LEAVEINT1
 
 WEAKER	MOVLW	b'01000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVF	tempA1,w ; use tempA1 to know where to print the black box
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		
 		MOVLW	b'11111'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'11111'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		CALL	Clear_Address
 		INCF	tempA1
@@ -1103,11 +1193,9 @@ WEAKER	MOVLW	b'01000'
 ; if its at 14, print WEAK
 
 END1	MOVLW	b'01100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'01001'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		
 		MOVLW	b'1000'
 		MOVWF	SCENE
@@ -1131,46 +1219,31 @@ END1	MOVLW	b'01100'
 SUPER	CALL	Letter_S
 
 		MOVLW	b'10101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		CALL	ET
 
 		MOVLW	b'10101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'10000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		CALL	Letter_E
 		CALL	Letter_R
 		
-		BSF		PORTB,3
-		CALL	DELAY4
-		BSF		PORTB,2
-		BCF		PORTB,3
-		CALL	DELAY4
-		BSF		PORTB,3
-		BCF		PORTB,2
-		CALL	DELAY4
-		BCF		PORTB,3
+		CALL	FLASH
 		GOTO	LEAVEINT1
 
 AVG		CALL	Letter_A
 
 		MOVLW	b'10101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'10110'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 
 		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'10111'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		BSF		PORTB,3
 		CALL	DELAY4
 		BCF		PORTB,3
@@ -1181,11 +1254,9 @@ WEAK	CALL	Letter_W
 		CALL	Letter_A
 		
 		MOVLW	b'10100'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'11011'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		BSF		PORTB,2
 		CALL	DELAY4
 		BCF		PORTB,2
@@ -1223,18 +1294,126 @@ DOUBLE_FIGURES
 		MOVWF	tempA1
 		BSF		tempA1,4
 		CALL	NUMBER
-		CALL	DELAY4
+		CALL	FLASH
 		GOTO	LEAVEINT1
 		
 SA		MOVF	tempB1,w
 		MOVWF	tempA1
 		BSF		tempA1,4
 		CALL	NUMBER
-		CALL	DELAY4
+		CALL	FLASH
 		GOTO	LEAVEINT1
 		
 MODE3INT
+		CALL	PLAY_GAME
+		BTFSC	MOVE,0
+		GOTO	LEAVEINT1
+		BTFSC	SUCCESS,0
+		GOTO	SUCC
 
+PENALTY		;arriving here means we have a mismatch --> calculate penalty
+	
+		MOVLW	b'01000'
+		CALL	LCD
+		MOVLW	b'01001'
+		CALL	LCD			
+		
+		MOVF	PEN,w
+		SUBWF	SCR
+		BTFSC	SCR,7
+		CLRF	SCR
+		
+		ADDWF	NEG		
+		CLRF	PEN	
+		MOVF	NEG,w
+		MOVWF	tempB2
+		CALL	Check_Double
+		BTFSC	DF,0
+		GOTO	DOUBLE_FIGS
+		GOTO	SINGLES
+		
+
+DOUBLE_FIGS	
+		MOVF	NEG,w
+		MOVWF	tempB1
+		CALL	PRINT_DOUBLE
+		GOTO	UPDATE_TOTAL
+
+SINGLES	MOVF	NEG,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	Blank_Space
+		GOTO	UPDATE_TOTAL
+		
+SUCC	INCF	SCR
+		MOVLW	b'01000'
+		CALL	LCD
+		MOVLW	b'01101'
+		CALL	LCD
+		
+		MOVF	MATCHES,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		BCF		SUCCESS,0
+		
+UPDATE_TOTAL
+		MOVLW	b'01100'
+		CALL	LCD
+		MOVLW	b'01110'
+		CALL	LCD
+
+		MOVF	SCR,w
+		MOVWF	tempB2
+		CALL	Check_Double
+		BTFSC	DF,0
+		GOTO	DOUBLE
+		GOTO	SINGLE
+
+DOUBLE	MOVF	SCR,w
+		MOVWF	tempB1
+		CALL	PRINT_DOUBLE
+		GOTO	Check_End
+
+SINGLE	MOVF	SCR,w
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		CALL	Blank_Space
+		GOTO	Check_End
+
+Check_End
+		
+		MOVLW	d'6'
+		SUBWF	MATCHES,0
+		BTFSC	STATUS,Z
+		GOTO	END3
+
+		CLRW	
+		SUBWF	SCR,0
+		BTFSC	STATUS,Z
+		GOTO	END3
+
+		CALL	Clear_Address
+		GOTO	LEAVEINT1
+
+END3	MOVLW	b'1000'
+		MOVWF	SCENE
+		MOVLW	d'6'
+		SUBWF	MATCHES,0
+		BTFSC	STATUS,Z
+		GOTO	WIN
+		CALL	BUZZ
+		CALL	BUZZ
+		CALL	BUZZ
+		CALL	DELAY4
+		GOTO	LEAVEINT1
+
+WIN		CALL	FLASH
+	
+
+	
 LEAVEINT1	BCF	INTCON,RBIF
 			RETFIE
 	
@@ -1246,11 +1425,9 @@ TMR0INT
 
 		DECF	tempA1
 		MOVLW	b'01000'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		MOVLW	b'01101'
-		MOVWF	PORTA
-		CALL	ET
+		CALL	LCD
 		CALL	NUMBER
 		MOVLW	d'155'
 		MOVWF	COUNTER2
@@ -1272,7 +1449,8 @@ TIME_OVER
 		CALL	DELAY4
 		MOVLW	b'1000'
 		MOVWF	SCENE
-		
+		CALL	BUZZ
+		CALL	BUZZ
 	
 LEAVEINT2	BCF	INTCON,	T0IF
 			RETFIE
