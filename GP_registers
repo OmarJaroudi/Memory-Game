@@ -1,0 +1,71 @@
+	c1		EQU	d'12'
+		COUNT1	EQU	d'13'
+		COUNT2	EQU	d'14'
+		SCENE	EQU	d'15'		
+		;"Scene" flag is used to indicate which scene we are in
+		;there are 4 scenes (Main menu, Mode1,Mode2,Mode3)
+		;so we can use 4 bits (1000 = Main menu,0100 = Mode1 etc.)
+		;when any of the 4 bits is set to 1, the others are 0
+
+		AC		EQU	d'16'	;indicates address of LCD
+		tempA1	EQU	d'17'
+		tempA2	EQU	d'18'
+		tempB1	EQU	d'19'
+		tempB2	EQU	d'20'
+		COUNTER	EQU	d'21'
+		IsOpen	EQU	d'22'	;indicates if a card is already open or not
+		
+		;LETTERS
+		;Each of thee L registers contains the 8 bit 
+		;representation of each letter on the LCD
+		L1		EQU	d'23'
+		L2		EQU	d'24'
+		L3		EQU	d'25'
+		L4		EQU	d'26'
+		L5		EQU	d'27'
+		L6		EQU	d'28'
+		L7		EQU	d'29'
+		L8		EQU	d'30'
+		L9		EQU	d'31'
+		L10		EQU	d'32'
+		L11		EQU	d'33'
+		L12		EQU	d'34'
+
+		;Flags to tell whether each letter is currently open or not
+		;if the 0 bit is set, the letter is open
+		S1		EQU	d'35'
+		S2		EQU	d'36'
+		S3		EQU	d'37'
+		S4		EQU	d'38'
+		S5		EQU	d'39'
+		S6		EQU	d'40'
+		S7		EQU	d'41'
+		S8		EQU	d'42'
+		S9		EQU	d'43'
+		S10		EQU	d'44'
+		S11		EQU	d'45'
+		S12		EQU	d'46'
+
+		;RECENT reg keeps track of the first letter opened in a pair
+		RECENT	EQU	d'47'
+
+		;RECENT@ indicates the position of RECENT on the LCD
+		RECENT@	EQU	d'48'
+		
+		TEMP	EQU	d'49'
+
+		;MATCHES keeps track of the number of matches in a game
+		MATCHES	EQU	d'50'
+		
+		;NOMATCH keeps track of the number of mismatches
+		;Used in Mode1
+		;Not cumulative -- every two mismatches, clear and repeat
+		NOMATCH EQU d'51'
+		
+		COUNTER2	EQU	d'52'
+		PEN		EQU	d'53'
+		SUCCESS	EQU	d'54'
+		NEG		EQU	d'55'
+		SCR		EQU	d'56'
+		MOVE	EQU	d'57'
+		DF		EQU	d'58'
