@@ -1,0 +1,220 @@
+MAIN_MENU	;player should now see " MODE	*1	2	3 "
+		
+		BCF		INTCON,T0IE
+		;Removing the cursor (DISPLAAY ON/OFF)
+		MOVLW	b'01100'
+		MOVWF	tempA1
+		CALL	DISPLAY_ON_OFF
+
+		;CLEAR DISPLAY
+		CALL	Clear_Display
+
+		;SET ADDRESS
+		CALL	Clear_Address
+		
+		MOVLW	b'1000'
+		MOVWF	SCENE	; we are in the "main menu" scene
+		MOVLW	d'6'
+		MOVWF	AC		; after printing the required characters, 
+						; our current address will be 06
+
+		;M
+		CALL	Letter_M
+
+		;O
+		CALL	Letter_O
+
+		;D
+		MOVLW	b'10100'
+		CALL	LCD
+		MOVLW	b'10100'
+		CALL	LCD
+
+		;E
+		CALL	Letter_E
+
+		;blank space
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+		;Print 1
+		MOVLW	b'10001'
+		MOVWF	tempA1
+		CALL	NUMBER
+	
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+		;Print 2
+		INCF	tempA1
+		CALL	NUMBER
+
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+		;Print 3
+		INCF	tempA1
+		CALL	NUMBER
+		
+		;SET ADDRESS to 05
+		MOVLW	b'01000'
+		CALL	LCD
+		MOVLW	b'00101'
+		CALL	LCD
+
+		;Print asterisk before '1' (*)
+		CALL	Asterisk
+		BSF		INTCON,GIE	;setting GIE means the program now responds to interrupts
+							; this is not done before so that it goes through 
+							; the welcome routine directly 
+
+InfLoop		;waiting for the player to navigate between modes or choose a mode
+
+		BTFSC	SCENE,3
+		GOTO	InfLoop
+		BTFSC	SCENE,2
+		GOTO	MODE1
+		BTFSC	SCENE,1
+		GOTO	MODE2
+		BTFSC	SCENE,0
+		GOTO	MODE3
+		GOTO	InfLoop
+
+; this is where MODE1 starts
+; - print on the LCD
+; -- wait for the player to start playing by flipping cards
+; NOTE: we clear the S registers (S1 through S12) to make sure that all
+;		cards are initially closed every time we start to play 
+
+MODE1	
+		CALL	Clear_S
+	
+		CLRF	MATCHES
+		CLRF	NOMATCH
+		CLRF	tempA2
+		CALL	INITIAL_CARDS	;prints 12 white boxes on LCD
+		
+		CALL	Set_AT_8
+		
+		;Print S
+		CALL	Letter_S
+		
+		;Print _| 6 times
+		MOVLW	d'7'
+		MOVWF	COUNTER
+		
+X		DECFSZ	COUNTER,F
+		GOTO 	AX
+		GOTO	AA
+AX		MOVLW	b'11010'
+		CALL	LCD
+		MOVLW	b'10011'
+		CALL	LCD
+		GOTO	X
+
+		;Print W
+AA		CALL	Letter_W
+
+		;Clear address to set cursor at 00
+		CALL	Clear_Address
+		MOVLW	d'9'
+		MOVWF	tempA1	;at this point tempA1 is used to print the black boxes
+						; as the player does more and more mismatches
+						; tempA1 will hold the address of the position 
+						; at which the next black box is to be printed
+						; initially its at 09, which is right next to S
+						; when the player does the first mismatch
+						; we print a black box and move tempA1 to 0A
+
+;waiting for interrupts
+Mode1_Loop
+		BTFSC	SCENE,3
+		GOTO	MAIN_MENU
+		GOTO	Mode1_Loop
+
+MODE2	MOVLW	d'155'
+		MOVWF	COUNTER2
+		CALL	Clear_S
+		CLRF	MATCHES
+		CALL	INITIAL_CARDS
+		CALL	Set_AT_8
+		CALL	Letter_R
+		CALL	Letter_E
+		CALL	Letter_M
+		CALL	Blank_Space
+		
+		;Printing T
+		MOVLW	b'10101'
+		CALL	LCD
+		MOVLW	b'10100'
+		CALL	LCD
+
+		MOVLW	b'11001'
+		MOVWF	tempA1
+		CALL	NUMBER	;print 9
+		MOVLW	b'10000'
+		MOVWF	tempA1
+		CALL	NUMBER
+		MOVLW	b'11001'
+		MOVWF	tempA1
+		MOVLW	b'1001'
+		MOVWF	tempB1
+		CALL	Clear_Address	
+		BSF		INTCON,T0IE		; to use timer interrupt
+	
+Mode2_Loop
+		BTFSC	SCENE,3
+		GOTO	MAIN_MENU	
+		GOTO	Mode2_Loop
+		
+
+MODE3	MOVLW	d'13'
+		MOVWF	SCR
+		CALL	Clear_S
+		BCF		SUCCESS,0
+		CLRF	PEN
+		CLRF	NEG
+		CLRF	MATCHES
+		CLRF	NOMATCH
+		CLRF	tempA2
+		CLRF	tempB1
+		CLRF	tempB2
+		CLRF	tempA1
+		CALL	INITIAL_CARDS	;prints 12 white boxes on LCD
+		
+		CALL	Set_AT_8
+		
+		MOVLW	b'10010'
+		CALL	LCD
+		MOVLW	b'11101'
+		CALL	LCD
+
+		MOVLW	d'16'
+		MOVWF	tempA1
+		CALL	NUMBER		;print 0
+
+		CALL	Blank_Space
+		CALL	Blank_Space
+		
+		MOVLW	b'10010'
+		CALL	LCD
+		MOVLW	b'11011'
+		CALL	LCD
+
+		
+		CALL	NUMBER
+
+		CALL	PRINT_SCORE
+		
+		MOVLW	b'10001'
+		MOVWF	tempA1
+		CALL	NUMBER
+		MOVLW	b'10011'
+		MOVWF	tempA1
+		CALL	NUMBER
+		CALL	Clear_Address
+		
+Mode3_Loop
+		BTFSC	SCENE,3
+		GOTO	MAIN_MENU	
+		GOTO	Mode3_Loop	
