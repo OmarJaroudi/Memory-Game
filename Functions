@@ -1,0 +1,529 @@
+LCD		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+DISPLAY_ON_OFF
+		MOVLW	b'00000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVF	tempA1,w
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+;Clears Display of LCD
+Clear_Display
+		MOVLW	b'00000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'00001'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+;Prints a blank space
+Blank_Space
+		MOVLW	b'11010'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10000'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+;Prints an asterisk
+Asterisk
+		MOVLW	b'10010'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'11010'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Letter_W
+		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10111'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Letter_R
+		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10010'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Letter_S	
+		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Letter_O
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'11111'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Letter_M 
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'11101'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+Letter_E
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10101'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+Letter_C
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+Letter_A	
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'10001'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+
+;prints a number form 0 to 9 on the LCD
+NUMBER	MOVLW	b'10011'
+		MOVWF	PORTA
+		CALL	ET
+		MOVF	tempA1,w
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+;Set address to 08 in order to print S------W or  REM T90 etc.
+Set_AT_8
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+;TOGGLE
+ET		BSF		PORTB,1
+		NOP
+		BCF		PORTB,1
+		Call	DELAY
+		RETURN
+
+; Moves the asterisk
+; This function is used in the MAIN MENU scene
+; FUNCTIONALITY: 
+; we know that the asterisk can only be at 3 positions
+; in our case they are addresses 05, 08, 0B on the LCD
+; so we take 3 cases
+; if AST is at 05, delete it and print it at 08
+; same for at 08 and 0B
+
+SET_AST
+		;Set Address
+		MOVF	tempA1,w
+		MOVWF 	PORTA
+		CALL  	ET
+		MOVF	tempA2,w
+		MOVWF 	PORTA
+		CALL  	ET
+
+		CALL 	Blank_Space
+
+		;Set Address
+		MOVF	tempB1,w
+		MOVWF 	PORTA
+		CALL 	ET
+		MOVF	tempB2,w
+		MOVWF 	PORTA
+		CALL 	ET
+		
+		CALL 	Asterisk
+		RETURN	
+
+
+BOX		MOVLW	b'11101'
+		MOVWF 	PORTA
+		CALL 	ET
+		MOVLW	b'11011'
+		MOVWF 	PORTA
+		CALL 	ET	
+		RETURN
+
+
+; Prints 12 white cards which is the initial display of every game
+; we print 6 boxes on the first line
+; set the address to the second line
+; print the other 6 boxes
+
+FLASH	BSF		PORTB,3
+		CALL	DELAY4
+		BSF		PORTB,2
+		BCF		PORTB,3
+		CALL	DELAY4
+		BSF		PORTB,3
+		BCF		PORTB,2
+		CALL	DELAY4
+		BCF		PORTB,3
+		RETURN
+
+;clear S1 through S12 registers
+Clear_S	MOVLW	d'35'
+		MOVWF	FSR
+		MOVLW	d'13'
+		MOVWF	COUNTER
+S		DECFSZ	COUNTER,F
+		GOTO	N
+		GOTO 	cont
+N		CLRF	INDF
+		INCF	FSR
+		GOTO 	S
+cont	RETURN
+ 
+LOAD_UPPER_AC
+		MOVLW	b'01000'
+		BTFSC	AC,7
+		ADDLW	b'100'
+		MOVWF	PORTA
+		CALL	ET
+		RETURN
+
+INITIAL_CARDS
+		;DISPLAY ON/OFF (activating cursor)
+		MOVLW	b'01110'
+		MOVWF	tempA1
+		CALL	DISPLAY_ON_OFF
+
+		CALL	Clear_Display
+		
+		
+		;Set Address
+		CALL	Clear_Address
+
+		CALL	UTILITY
+		
+		;Set Address
+		MOVLW	b'01100'
+		MOVWF 	PORTA
+		CALL 	ET
+		MOVLW	b'00000'
+		MOVWF 	PORTA
+		CALL 	ET
+		
+		CALL	UTILITY
+
+		RETURN
+
+;UTILITY prints a white box 6 times
+UTILITY	MOVLW	d'6'
+		MOVWF	COUNTER
+L		CALL	BOX
+		DECFSZ	COUNTER
+		GOTO	L
+		RETURN
+
+; function that controls all button pushes during a game
+; if a player hits any of the four available buttons in-game
+; the interrupt will call this function 
+; this is done over and over until the game ends,
+; wherein the score is calculated later on
+
+PLAY_GAME
+; to arrive here
+; the player had pressed one of the four buttons
+; so we have four cases to take care of
+; pressing right or left only requires us to move the DD address
+; and update the corresponding flags
+
+		BTFSS	PORTB,5
+		GOTO	RIGHT
+		BTFSS	PORTB,4
+		GOTO	LEFT
+		BTFSS	PORTB,6
+		GOTO	UP_DOWN
+		BTFSS	PORTB,7
+		GOTO	FLIP
+		GOTO	DONE
+
+RIGHT	BSF		MOVE,0
+		MOVF	AC,w
+		MOVWF	c1
+		BCF		c1,7
+		MOVLW	d'5'
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	BUZZ
+		CALL	LOAD_UPPER_AC
+		INCF	AC
+		MOVF	AC,w
+		MOVWF	PORTA
+		CALL	ET
+		GOTO	DONE
+
+LEFT	BSF		MOVE,0
+		MOVF	AC,w
+		MOVWF	c1
+		BCF		c1,7
+		CLRW	
+		SUBWF	c1
+		BTFSC	STATUS,Z
+		GOTO	BUZZ
+		CALL	LOAD_UPPER_AC
+		DECF	AC
+		MOVF	AC,w
+		MOVWF	PORTA
+		CALL	ET
+		GOTO 	DONE
+
+
+UP_DOWN	BSF		MOVE,0
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		BTFSS	AC,7
+		BSF		PORTA,2
+		BTFSC	AC,7
+		BCF		PORTA,2
+		CALL	ET
+
+		MOVLW	b'10000000'
+		XORWF	AC
+		MOVF	AC,w
+		MOVWF	PORTA
+		CALL	ET
+		GOTO	DONE
+; flipping a card...
+; make sure the cards the player is trying to flip is not already open
+; this is where the S flags come in handy 
+FLIP	MOVLW	d'35'
+		MOVWF	FSR
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW	d'6'
+		BTFSC	c1,7
+		ADDWF	c1
+		BCF		c1,7
+		MOVF	c1,w
+		ADDWF	FSR
+		BTFSC	INDF,0
+		GOTO	BUZZ
+		
+; we need to know whether this is the first card of a pair or the second
+; for this, there is a special flag we have declared which is IsOpen
+; if the 0 bit is set then the second card is being flipped
+
+		BTFSS	IsOpen,0
+		GOTO	FIRST
+		GOTO	SECOND
+
+
+FIRST	BSF		MOVE,0
+		MOVF	AC,w
+		MOVWF	RECENT@
+		MOVLW	d'12'
+		SUBWF	FSR
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVF	INDF,w
+		MOVWF	RECENT
+		IORLW	b'10000'
+		MOVWF	PORTA
+		CALL	ET
+		
+		CALL	Clear_Address
+		
+		MOVLW	d'12'
+		ADDWF	FSR
+		MOVF	FSR,w
+		MOVWF	TEMP
+		BSF		INDF,0
+		BSF		IsOpen,0
+		GOTO	DONE
+
+; upon flipping the second card in a pair,
+; we need to check if the pair is correct or not
+; we compare the 8 bit value of the character we are flipping,
+; with the chracter we just flipped, which is in the RECENT register
+		
+SECOND	BCF		MOVE,0
+		BCF		IsOpen,0
+		MOVLW	d'12'
+		SUBWF	FSR
+		MOVLW	b'10100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVF	INDF,w
+		IORLW	b'10000'
+		MOVWF	PORTA
+		CALL	ET
+		
+		MOVF	RECENT,w
+		SUBWF	INDF,0
+		BTFSS	STATUS,Z
+		GOTO	MISMATCH
+
+; if the two cards match, we increment the MATCHES register
+; keep both cards open
+; generate buzz
+
+MATCH	INCF	MATCHES
+		BSF		SUCCESS,0
+		MOVLW	d'12'
+		ADDWF	FSR
+		BSF		INDF,0
+		
+		CALL	Clear_Address
+		CLRF	RECENT
+		GOTO	BUZZ
+
+; in case the two cards don't match
+; we should close both
+; the address is currently at the second card
+; so we replace it with a white box and clear the corresponding S register
+; the address of the first card will be in RECENT@
+; we set DD ram to it, replace it with a white box and clear the corresponding S reg
+; we increment the NOMATCH register
+; we also generate a red brief light
+		
+MISMATCH
+		BCF		SUCCESS,0
+		INCF	NOMATCH
+		INCF	tempA2
+		MOVF	TEMP,w
+		MOVWF	FSR
+		BCF		INDF,0
+		BTFSC	INDF,7
+		INCF	PEN
+		BTFSS	INDF,7
+		BSF		INDF,7
+		BSF		PORTB,2
+		CALL	DELAY4
+	
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		MOVLW	b'100'
+		BTFSC	AC,7
+		ADDWF	PORTA
+		CALL	ET
+		MOVF	AC,w
+		MOVWF	PORTA
+		CALL	ET
+
+		CALL	BOX	
+		
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		MOVLW	b'100'		
+		BTFSC	RECENT@,7
+		ADDWF	PORTA
+		CALL	ET
+		MOVF	RECENT@,w
+		MOVWF	PORTA
+		CALL	ET
+		
+		CALL	BOX
+		
+		MOVLW	d'35'
+		MOVWF	FSR
+		MOVF	AC,w
+		MOVWF	c1
+		MOVLW	d'6'
+		BTFSC	c1,7
+		ADDWF	c1
+		BCF		c1,7
+		MOVF	c1,w
+		ADDWF	FSR
+		BCF		INDF,0
+		BTFSC	INDF,7
+		INCF	PEN
+		BTFSS	INDF,7
+		BSF		INDF,7
+
+		CALL	Clear_Address
+		BCF		PORTB,2
+		GOTO	DONE
+
+BUZZ	BSF		PORTB,0
+		CALL	DELAY3
+		BCF		PORTB,0
+
+DONE	RETURN
+
+
+Clear_Address
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'00000'
+		MOVWF	PORTA
+		CALL	ET
+		CLRF	AC
+		RETURN
+
+
+PRINT_SCORE
+		MOVLW	b'01100'
+		MOVWF	PORTA
+		CALL	ET
+		MOVLW	b'01000'
+		MOVWF	PORTA
+		CALL	ET
+		CALL	Letter_S
+		CALL	Letter_C
+		CALL	Letter_O
+		CALL	Letter_R
+		CALL	Letter_E
+		CALL	Blank_Space
+		RETURN
+
+PRINT_DOUBLE
+		MOVLW	b'10001'
+		MOVWF	tempA1
+		CALL	NUMBER
+
+		MOVLW	d'10'
+		SUBWF	tempB1,0
+		MOVWF	tempA1
+		BSF		tempA1,4
+		CALL	NUMBER
+		RETURN
+
+Check_Double
+		MOVLW	d'10'
+		SUBWF	tempB2		;check if number of mismatches has become>=10
+		BTFSC	STATUS,Z
+		GOTO	SET1
+		BTFSS	tempB2,7	;meaning the result is negative
+		GOTO	SET1
+		BCF		DF,0
+		GOTO	ret
+SET1	BSF		DF,0
+ret		RETURN
